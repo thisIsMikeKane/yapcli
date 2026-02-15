@@ -1,6 +1,6 @@
 """Allow ``python -m yapcli`` to execute the CLI."""
 
-from yapcli.cli import main
+from yapcli.cli.main import main
 
 
 def _run() -> None:
