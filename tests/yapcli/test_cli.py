@@ -10,10 +10,8 @@ from yapcli import cli
 
 
 @pytest.fixture()
-def runner(monkeypatch: pytest.MonkeyPatch) -> Iterator[CliRunner]:
-    """Provide a CLI runner with deterministic console output."""
-    console = Console(force_terminal=False, color_system=None, markup=True)
-    monkeypatch.setattr(cli, "console", console)
+def runner() -> Iterator[CliRunner]:
+    """Provide a CLI runner."""
     yield CliRunner()
 
 
@@ -25,9 +23,7 @@ def test_help_shows_when_no_args(runner: CliRunner) -> None:
     assert "ping" in result.output
 
 
-def test_version_flag_outputs_version(
-    runner: CliRunner, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_version_flag_outputs_version(runner: CliRunner) -> None:
 
     result = runner.invoke(cli.app, ["--version"])
 
