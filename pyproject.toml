@@ -12,7 +12,12 @@ authors = [
   { name = "Michael Kane", email = "thisismikekane@gmail.com" }
 ]
 dependencies = [
+  "Flask>=3.1.2",
+  "itsdangerous>=2.2.0",
+  "plaid_python>=38.0.0",
+  "python-dotenv>=1.2.1",
   "typer>=0.12.3",
+  "werkzeug>=3.1.4",
 ]
 
 [project.scripts]
@@ -58,3 +63,7 @@ dev = [
 
 [tool.mypy]
 files = ["yapcli"]
+
+[[tool.mypy.overrides]]
+module = ["plaid", "plaid.*"]
+ignore_missing_imports = true
