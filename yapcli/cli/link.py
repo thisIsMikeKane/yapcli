@@ -146,8 +146,16 @@ def terminate_process(proc: Optional[ManagedProcess]) -> None:
         return
 
     try:
-        if hasattr(os, "killpg"):
-            os.killpg(process.pid, signal.SIGTERM)
+        # Only signal the process group when the child is its group leader
+        # (i.e., created with start_new_session=True). Otherwise terminate just the process.
+        if hasattr(os, "killpg") and hasattr(os, "getpgid"):
+            try:
+                if os.getpgid(process.pid) == process.pid:
+                    os.killpg(process.pid, signal.SIGTERM)
+                else:
+                    process.terminate()
+            except ProcessLookupError:
+                process.terminate()
         else:
             process.terminate()
         process.wait(timeout=10)
@@ -165,23 +173,32 @@ def terminate_process(proc: Optional[ManagedProcess]) -> None:
 
 
 def discover_credentials(secrets_dir: Path, started_at: float) -> Optional[Tuple[str, str, str]]:
-    access_files = secrets_dir.glob("*_access_token")
-    for access_file in access_files:
+    best: Optional[Tuple[str, str, str]] = None
+    best_updated = -1.0
+
+    for access_file in secrets_dir.glob("*_access_token"):
         identifier = access_file.name[: -len("_access_token")]
         item_file = secrets_dir / f"{identifier}_item_id"
         if not item_file.exists():
             continue
 
-        access_updated = access_file.stat().st_mtime
-        item_updated = item_file.stat().st_mtime
+        try:
+            access_updated = access_file.stat().st_mtime
+            item_updated = item_file.stat().st_mtime
+        except FileNotFoundError:
+            continue
+
         if access_updated < started_at or item_updated < started_at:
             continue
 
-        item_id = item_file.read_text().strip()
-        access_token = access_file.read_text().strip()
-        return identifier, item_id, access_token
+        updated = max(access_updated, item_updated)
+        if updated >= best_updated:
+            item_id = item_file.read_text().strip()
+            access_token = access_file.read_text().strip()
+            best = (identifier, item_id, access_token)
+            best_updated = updated
 
-    return None
+    return best
 
 
 def wait_for_credentials(
@@ -206,7 +223,10 @@ def wait_for_credentials(
         if frontend_proc and frontend_proc.process.poll() is not None:
             raise RuntimeError("Frontend server terminated before Plaid Link completed.")
 
-        time.sleep(POLL_INTERVAL_SECONDS)
+        remaining = deadline - time.time()
+        if remaining <= 0:
+            break
+        time.sleep(min(POLL_INTERVAL_SECONDS, remaining))
 
     raise TimeoutError
 
