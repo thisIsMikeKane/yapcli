@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Iterator
 
 import pytest
-from rich.console import Console
 from typer.testing import CliRunner
 
 from yapcli import cli
