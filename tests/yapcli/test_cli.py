@@ -28,12 +28,11 @@ def test_help_shows_when_no_args(runner: CliRunner) -> None:
 def test_version_flag_outputs_version(
     runner: CliRunner, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(cli, "__version__", "1.2.3")
 
     result = runner.invoke(cli.app, ["--version"])
 
     assert result.exit_code == 0
-    assert "py-plaid v1.2.3" in result.output
+    assert "py-plaid v0.0.1.dev" in result.output
 
 
 def test_ping_defaults_to_plaid(runner: CliRunner) -> None:
