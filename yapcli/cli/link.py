@@ -38,12 +38,6 @@ def configure_logging(started_at: dt.datetime) -> Path:
 
     logger.remove()
     logger.add(
-        sys.stderr,
-        level="INFO",
-        colorize=True,
-        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level}</level> | {message}",
-    )
-    logger.add(
         log_path,
         level="INFO",
         enqueue=True,
