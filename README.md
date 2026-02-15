@@ -1,4 +1,4 @@
-# Plaid CLI (Typer)
+# Yet Another Plaid CLI
 
 A CLI for exporting Plaid API requests to plain text for importing into accounting/budgeting software (e.g, GnuCash)
 
