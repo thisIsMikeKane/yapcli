@@ -2,48 +2,68 @@
 
 Thanks for helping improve Plaid CLI! This project uses Poetry for dependency management. Follow the workflow below to mirror the maintainers' setup.
 
-## Development environment (VS Code + Poetry)
+## Development environment (VS Code + uv)
 
 ### Prerequisites
 
-1. **Install [pipx](https://pipx.pypa.io/stable/)**
-
-   If you don't already have `pipx`, install it with `python3 -m pip install --user pipx` (or follow your OS package instructions). Reload your shell or ensure `~/.local/bin` (or the path printed by the installer) is on `PATH`.
-
-2. **Install [Poetry](https://python-poetry.org/docs/#installation)**
+1. **Install [uv](https://docs.astral.sh/uv/)**
 
    ```bash
-   pipx install poetry
+   pipx install uv
    ```
 
-3. **Install [tox](https://tox.wiki)**
+   Reload your shell and verify `uv --version`.
+
+2. **Install [tox](https://tox.wiki)** (optional)
 
    ```bash
    pipx install tox
    ```
 
-### Create Poetry development environment and set as default for VSCode project
+### Create uv environments and set as default for VS Code project
 
-1. **Select the Python interpreter** (adjust the version if desired):
-
-   ```bash
-   poetry env use 3.12
-   ```
-
-   If `python3.12` is not available, point Poetry to the interpreter you prefer (e.g., `poetry env use $(which python3.12)`).
-
-2. **Install all dependency groups** (runtime + lint/typecheck/test/dev tooling):
+1. **Create the base package environment** (runtime only):
 
    ```bash
-   poetry install --with dev
+   uv venv .venv --python 3.12
+   source .venv/bin/activate
+   uv pip install -e .
    ```
 
-3. **Configure VS Code to use Poetry's virtual environment**
+2. **Create the development environment** (runtime + lint/typecheck/test tooling):
+
+   ```bash
+   uv venv .venv-dev --python 3.12
+   source .venv-dev/bin/activate
+   uv pip install -e . --group dev
+   ```
+
+3. **Configure VS Code to use the uv environments**
 
    1. Install/enable the official *Python* extension from Microsoft (recommended in [\.vscode/extensions.json](.vscode/extensions.json). In VS Code, open the Extensions view and look for the **Recommended** section (or search `@recommended`) and install it from there.
 
    2. Open the **Python Environments** panel (status bar interpreter picker ➜ *Python Environments*, or run `Python: Focus Python Environments` from the Command Palette).
 
-   3. Under **Workspace**, you should see the Poetry env created in steps 2–3 (e.g., `.cache/pypoetry/virtualenvs/plaid-cli-python-...`). Select it and click **Set as default for new terminals**.
+   3. Under **Workspace**, select `.venv-dev` and click **Set as default for new terminals**.
 
-   4. Create a fresh terminal with `Terminal: Create New Terminal` (or the `+` button). VS Code launches it with the Poetry environment already activated, so `python`/`poetry run` all map to the same interpreter.
+   4. Create a fresh terminal with `Terminal: Create New Terminal` (or the `+` button). VS Code launches it with the selected environment activated.
+
+## Building and publishing
+
+This project uses standard Python build tooling (PEP 517/518) with git-derived versions.
+
+1. **Build the package**
+
+   ```bash
+   uv tool install build
+   python -m build
+   ```
+
+2. **Publish to PyPI**
+
+   ```bash
+   uv tool install twine
+   twine upload dist/*
+   ```
+
+Version numbers are derived from Git tags via `setuptools-scm`. Create a tag like `v0.1.0` and the build will use it automatically.

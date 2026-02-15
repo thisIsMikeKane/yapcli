@@ -1,10 +1,10 @@
 [build-system]
-requires = ["poetry-core>=2.3.1"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=69", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "yapcli"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Yet another Plaid CLI."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -12,7 +12,7 @@ authors = [
   { name = "Michael Kane", email = "thisismikekane@gmail.com" }
 ]
 dependencies = [
-  "typer[all]>=0.12.3",
+  "typer>=0.12.3",
 ]
 
 [project.scripts]
@@ -20,6 +20,11 @@ py-plaid = "yapcli.cli:app"
 
 [project.urls]
 Homepage = "https://github.com/thisIsMikeKane/plaid-cli-python"
+
+[tool.setuptools_scm]
+version_scheme = "guess-next-dev"
+local_scheme = "node-and-date"
+fallback_version = "0.0.0"
 
 [dependency-groups]
 lint = [
@@ -38,7 +43,7 @@ test = [
 ]
 
 tox = [
-  "tox>=3.30",
+  "tox>=4.25",
 ]
 
 dev = [
