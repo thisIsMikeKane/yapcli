@@ -16,7 +16,7 @@ app = typer.Typer(
     help="Utilities for interacting with Plaid programmatically.",
 )
 app.add_typer(link_app)
-app.add_typer(balances_app, name="balances")
+app.add_typer(balances_app)
 
 
 def _version_callback(value: bool) -> None:

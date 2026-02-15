@@ -61,8 +61,8 @@ def get_accounts_for_institution(
     return backend.get_accounts()
 
 
-@app.command("get")
-def get_command(
+@app.command("balances")
+def get_balances(
     institution_id: str = typer.Argument(
         ..., help="Institution identifier used in secrets filenames (e.g. ins_109511)."
     ),
