@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import typer
 
 from yapcli.server import PlaidBackend
+from yapcli.utils import discover_institutions
 
 app = typer.Typer(help="Fetch account/balance information for a linked institution.")
 
@@ -59,21 +60,6 @@ def get_accounts_for_institution(
     )
     backend = PlaidBackend(access_token=access_token, item_id=item_id)
     return backend.get_accounts()
-
-
-def discover_institutions(*, secrets_dir: Path) -> List[str]:
-    """Return institution ids that have both *_access_token and *_item_id files."""
-
-    institutions: List[str] = []
-    for access_file in secrets_dir.glob("*_access_token"):
-        identifier = access_file.name[: -len("_access_token")]
-        if not identifier:
-            continue
-        item_file = secrets_dir / f"{identifier}_item_id"
-        if item_file.exists():
-            institutions.append(identifier)
-
-    return sorted(set(institutions))
 
 
 def parse_institution_selection(selection: str, institutions: List[str]) -> List[str]:
