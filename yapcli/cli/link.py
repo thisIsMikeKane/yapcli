@@ -218,7 +218,7 @@ def wait_for_credentials(
 
 
 @app.command()
-def link(  # pragma: no cover - requires Plaid and npm services
+def link(
     backend_port: int = typer.Option(
         DEFAULT_BACKEND_PORT,
         "--backend-port",
@@ -254,6 +254,9 @@ def link(  # pragma: no cover - requires Plaid and npm services
         show_default=True,
     ),
 ) -> None:
+    """
+    Launch Plaid Link locally and wait for user to complete the flow returning an item_id and access_token.
+    """
     started_at = time.time()
     started_dt = dt.datetime.fromtimestamp(started_at)
     configure_logging(started_dt)
