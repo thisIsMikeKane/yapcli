@@ -6,6 +6,7 @@ import typer
 from rich.console import Console
 
 from yapcli import __version__
+from yapcli.cli.balances import app as balances_app
 from yapcli.cli.link import app as link_app
 
 console = Console()
@@ -15,6 +16,7 @@ app = typer.Typer(
     help="Utilities for interacting with Plaid programmatically.",
 )
 app.add_typer(link_app)
+app.add_typer(balances_app, name="balances")
 
 
 def _version_callback(value: bool) -> None:
