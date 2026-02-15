@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping improve Plaid CLI! This project uses Poetry for dependency management. Follow the workflow below to mirror the maintainers' setup.
+Thanks for helping improve Plaid CLI! This project uses UV for dependency management. Follow the workflow below to mirror the maintainers' setup.
 
 ## Development environment (VS Code + uv)
 
