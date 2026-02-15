@@ -4,15 +4,27 @@ Thanks for helping improve Plaid CLI! This project uses Poetry for dependency ma
 
 ## Development environment (VS Code + Poetry)
 
-1. **Install [Poetry](https://python-poetry.org/docs/#installation) (recommended via [pipx](https://pipx.pypa.io/stable/))**
+### Prerequisites
+
+1. **Install [pipx](https://pipx.pypa.io/stable/)**
+
+   If you don't already have `pipx`, install it with `python3 -m pip install --user pipx` (or follow your OS package instructions). Reload your shell or ensure `~/.local/bin` (or the path printed by the installer) is on `PATH`.
+
+2. **Install [Poetry](https://python-poetry.org/docs/#installation)**
 
    ```bash
    pipx install poetry
    ```
 
-   If you don't already have `pipx`, install it with `python3 -m pip install --user pipx` (or follow your OS package instructions). Reload your shell or ensure `~/.local/bin` (or the path printed by the installer) is on `PATH`.
+3. **Install [tox](https://tox.wiki)**
 
-2. **Select the Python interpreter** (adjust the version if desired):
+   ```bash
+   pipx install tox
+   ```
+
+### Create Poetry development environment and set as default for VSCode project
+
+1. **Select the Python interpreter** (adjust the version if desired):
 
    ```bash
    poetry env use 3.12
@@ -20,13 +32,13 @@ Thanks for helping improve Plaid CLI! This project uses Poetry for dependency ma
 
    If `python3.12` is not available, point Poetry to the interpreter you prefer (e.g., `poetry env use $(which python3.12)`).
 
-3. **Install all dependency groups** (runtime + lint/typecheck/test/dev tooling):
+2. **Install all dependency groups** (runtime + lint/typecheck/test/dev tooling):
 
    ```bash
    poetry install --with dev
    ```
 
-4. **Configure VS Code to use Poetry's virtual environment**
+3. **Configure VS Code to use Poetry's virtual environment**
 
    1. Install/enable the official *Python* extension from Microsoft (recommended in [\.vscode/extensions.json](.vscode/extensions.json). In VS Code, open the Extensions view and look for the **Recommended** section (or search `@recommended`) and install it from there.
 

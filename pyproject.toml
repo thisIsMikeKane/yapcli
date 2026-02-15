@@ -37,10 +37,15 @@ test = [
   "pytest-sugar>=1.0",
 ]
 
+tox = [
+  "tox>=3.30",
+]
+
 dev = [
   "pip>=24.2",
   "pre-commit>=3.7",
   { include-group = "lint" },
   { include-group = "typecheck" },
   { include-group = "test" },
+  { include-group = "tox" },
 ]
