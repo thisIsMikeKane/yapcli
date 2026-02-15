@@ -14,6 +14,7 @@ authors = [
 dependencies = [
   "Flask>=3.1.2",
   "itsdangerous>=2.2.0",
+  "loguru>=0.7.3",
   "plaid_python>=38.0.0",
   "python-dotenv>=1.2.1",
   "typer>=0.12.3",
