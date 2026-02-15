@@ -34,6 +34,7 @@ lint = [
 
 typecheck = [
   "mypy>=1.10",
+  "typer>=0.15.3",
 ]
 
 test = [
@@ -54,3 +55,6 @@ dev = [
   { include-group = "test" },
   { include-group = "tox" },
 ]
+
+[tool.mypy]
+files = ["yapcli"]
