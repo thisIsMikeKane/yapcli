@@ -17,6 +17,3 @@ def test_version_flag_outputs_version(runner: CliRunner) -> None:
 
     assert result.exit_code == 0
     assert "yapcli v0.0.1.dev" in result.output
-
-
-

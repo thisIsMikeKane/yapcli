@@ -82,7 +82,9 @@ def test_wait_for_credentials_times_out(tmp_path: Path) -> None:
 def test_terminate_process_stops_running_process(tmp_path: Path) -> None:
     log_path = tmp_path / "process.log"
     log_handle = log_path.open("w")
-    process = subprocess.Popen(["sleep", "30"], stdout=log_handle, stderr=subprocess.STDOUT)
+    process = subprocess.Popen(
+        ["sleep", "30"], stdout=log_handle, stderr=subprocess.STDOUT
+    )
     managed = link.ManagedProcess(process=process, log_handle=log_handle)
 
     try:

@@ -172,7 +172,9 @@ def terminate_process(proc: Optional[ManagedProcess]) -> None:
         proc.log_handle.close()
 
 
-def discover_credentials(secrets_dir: Path, started_at: float) -> Optional[Tuple[str, str, str]]:
+def discover_credentials(
+    secrets_dir: Path, started_at: float
+) -> Optional[Tuple[str, str, str]]:
     best: Optional[Tuple[str, str, str]] = None
     best_updated = -1.0
 
@@ -218,10 +220,14 @@ def wait_for_credentials(
             return credentials
 
         if backend_proc and backend_proc.process.poll() is not None:
-            raise RuntimeError("Flask backend terminated before credentials were captured.")
+            raise RuntimeError(
+                "Flask backend terminated before credentials were captured."
+            )
 
         if frontend_proc and frontend_proc.process.poll() is not None:
-            raise RuntimeError("Frontend server terminated before Plaid Link completed.")
+            raise RuntimeError(
+                "Frontend server terminated before Plaid Link completed."
+            )
 
         remaining = deadline - time.time()
         if remaining <= 0:
@@ -309,7 +315,9 @@ def link(
             logger.info("Opened browser to {}", frontend_url)
         else:
             console.print(f"Open your browser to {frontend_url} to finish Plaid Link.")
-            logger.info("Browser not opened automatically. Navigate to {}", frontend_url)
+            logger.info(
+                "Browser not opened automatically. Navigate to {}", frontend_url
+            )
 
         console.print("Waiting for Plaid Link to complete and tokens to be written...")
         logger.info("Waiting for credentials to appear in {}", secrets_path)
@@ -326,7 +334,9 @@ def link(
         console.print(f"item_id: [cyan]{item_id}[/]")
         console.print(f"access_token: [cyan]{access_token}[/]")
         logger.info(
-            "Plaid Link completed. identifier={} item_id={} access_token_saved", identifier, item_id
+            "Plaid Link completed. identifier={} item_id={} access_token_saved",
+            identifier,
+            item_id,
         )
     except subprocess.CalledProcessError as exc:
         console.print(f"[red]Command failed[/]: {exc}")

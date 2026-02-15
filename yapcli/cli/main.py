@@ -38,8 +38,6 @@ def main_callback(
     """Handle global CLI options before dispatching to sub-commands."""
 
 
-
-
 def main() -> None:
     """Invoke the Typer application."""
     app(prog_name="yapcli")
