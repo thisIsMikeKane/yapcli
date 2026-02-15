@@ -6,7 +6,6 @@ import typer
 from rich.console import Console
 
 from yapcli import __version__
-from yapcli.cli.ping import app as ping_app
 from yapcli.cli.link import app as link_app
 
 console = Console()
@@ -15,7 +14,6 @@ app = typer.Typer(
     no_args_is_help=True,
     help="Utilities for interacting with Plaid programmatically.",
 )
-app.add_typer(ping_app)
 app.add_typer(link_app)
 
 
