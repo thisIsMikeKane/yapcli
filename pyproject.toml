@@ -1,13 +1,13 @@
 [build-system]
-requires = ["uv>=0.4.0"]
-build-backend = "uv.build"
+requires = ["poetry-core>=2.3.1"]
+build-backend = "poetry.core.masonry.api"
 
 [project]
-name = "plaid-cli-python"
+name = "yapcli"
 version = "0.1.0"
-description = "Typer-based Plaid CLI packaged for pipx."
+description = "Yet another Plaid CLI."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 authors = [
   { name = "Michael Kane", email = "thisismikekane@gmail.com" }
 ]
@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-plaid-cli = "plaid_cli.cli:app"
+py-plaid = "yapcli.cli:app"
 
 [project.urls]
 Homepage = "https://github.com/thisIsMikeKane/plaid-cli-python"
