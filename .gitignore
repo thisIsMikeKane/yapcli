@@ -1,3 +1,9 @@
+# Configuration and secrets
+secrets/
+
+# Logs
+logs/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

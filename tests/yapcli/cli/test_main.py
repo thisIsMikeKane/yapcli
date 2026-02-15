@@ -9,6 +9,7 @@ def test_help_shows_when_no_args(runner: CliRunner) -> None:
     assert result.exit_code == 2
     assert "Utilities for interacting with Plaid programmatically." in result.output
     assert "ping" in result.output
+    assert "link" in result.output
 
 
 def test_version_flag_outputs_version(runner: CliRunner) -> None:

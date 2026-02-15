@@ -9,6 +9,7 @@ import os
 import datetime as dt
 import json
 import time
+from pathlib import Path
 
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify
@@ -44,6 +45,12 @@ PLAID_SECRET = os.getenv("PLAID_SECRET")
 PLAID_ENV = os.getenv("PLAID_ENV", "sandbox")
 PLAID_PRODUCTS = os.getenv("PLAID_PRODUCTS", "transactions").split(",")
 PLAID_COUNTRY_CODES = os.getenv("PLAID_COUNTRY_CODES", "US").split(",")
+SECRETS_DIR = Path(
+    os.getenv(
+        "PLAID_SECRETS_DIR",
+        Path(__file__).resolve().parents[1] / "secrets",
+    )
+)
 
 
 def empty_to_none(field):
@@ -139,7 +146,21 @@ def get_access_token():
         exchange_response = client.item_public_token_exchange(exchange_request)
         access_token = exchange_response["access_token"]
         item_id = exchange_response["item_id"]
-        return jsonify(exchange_response.to_dict())
+        institution_id = None
+        try:
+            item_response = client.item_get(ItemGetRequest(access_token=access_token))
+            item_payload = item_response.to_dict()
+            institution_id = item_payload.get("item", {}).get("institution_id")
+        except plaid.ApiException as item_exc:
+            print(item_exc)
+
+        persist_credentials(
+            institution_id=institution_id, item_id=item_id, token=access_token
+        )
+
+        response_payload = exchange_response.to_dict()
+        response_payload["institution_id"] = institution_id
+        return jsonify(response_payload)
     except plaid.ApiException as e:
         return json.loads(e.body)
 
@@ -329,6 +350,19 @@ def format_error(e):
             "error_type": response["error_type"],
         }
     }
+
+
+def persist_credentials(*, institution_id, item_id, token):
+    identifier = institution_id or item_id
+    if identifier is None:
+        return
+
+    try:
+        SECRETS_DIR.mkdir(parents=True, exist_ok=True)
+        (SECRETS_DIR / f"{identifier}_item_id").write_text(item_id or "")
+        (SECRETS_DIR / f"{identifier}_access_token").write_text(token or "")
+    except OSError as exc:
+        print(f"Unable to write tokens to {SECRETS_DIR}: {exc}")
 
 
 if __name__ == "__main__":
