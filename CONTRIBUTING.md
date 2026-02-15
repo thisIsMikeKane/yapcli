@@ -23,21 +23,15 @@ Thanks for helping improve Plaid CLI! This project uses Poetry for dependency ma
 3. **Install all dependency groups** (runtime + lint/typecheck/test/dev tooling):
 
    ```bash
-   poetry install --with lint,typecheck,test,dev
+   poetry install --with dev
    ```
 
 4. **Configure VS Code to use Poetry's virtual environment**
 
-   - Discover the environment path: `poetry env info --path`
-   - In VS Code run *Python: Select Interpreter* and pick the path returned above
-   - Optionally set "python.defaultInterpreterPath" to that path inside `.vscode/settings.json`
+   1. Install/enable the official *Python* extension from Microsoft (recommended in [\.vscode/extensions.json](.vscode/extensions.json). In VS Code, open the Extensions view and look for the **Recommended** section (or search `@recommended`) and install it from there.
 
-5. **Run project commands through Poetry**
+   2. Open the **Python Environments** panel (status bar interpreter picker ➜ *Python Environments*, or run `Python: Focus Python Environments` from the Command Palette).
 
-   ```bash
-   poetry run pytest
-   poetry run ruff check
-   poetry run mypy
-   ```
+   3. Under **Workspace**, you should see the Poetry env created in steps 2–3 (e.g., `.cache/pypoetry/virtualenvs/plaid-cli-python-...`). Select it and click **Set as default for new terminals**.
 
-   Add additional helpers (formatters, hooks, etc.) with `poetry run ...` to keep the workflow consistent for all contributors.
+   4. Create a fresh terminal with `Terminal: Create New Terminal` (or the `+` button). VS Code launches it with the Poetry environment already activated, so `python`/`poetry run` all map to the same interpreter.

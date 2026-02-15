@@ -10,9 +10,12 @@ A CLI for exporting Plaid API requests to plain text for importing into accounti
   - [ ] [`liabilities`](https://plaid.com/docs/api/products/liabilities/)
 - [ ] Supports financial institutions that require OAuth authentication with Plaid
 
-## Quick start
+## Prerequisites
 
 [ ] TODO explain how to get Plaid developer credentials
+[ ] TODO explain how to install pipx
+
+## Quick start
 
 ```bash
 pipx install git+https://github.com/thisismikekane/plaid-cli-python.git
@@ -21,7 +24,7 @@ plaid-cli --help
 
 ## Development environment
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the detailed VS Code + Poetry workflow.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow.
 
 ## Project scripts
 
