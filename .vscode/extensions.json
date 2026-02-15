@@ -1,5 +1,12 @@
 {
   "recommendations": [
-    "ms-python.vscode-python-envs"
+    "ms-python.vscode-python-envs",
+    "ms-python.black-formatter",
+    "ms-python.mypy-type-checker",
+    "charliermarsh.ruff",
+    "tamasfe.even-better-toml",
+    "yzhang.markdown-all-in-one",
+    "davidanson.vscode-markdownlint",
+    "redhat.vscode-yaml"
   ]
 }
