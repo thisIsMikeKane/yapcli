@@ -32,7 +32,6 @@ The CLI entry point is defined in `pyproject.toml` under `[project.scripts]` as 
 
 ## Related works
 
-- [ebridges/plaid2qif](https://github.com/ebridges/plaid2qif)
-- [bhipple/plaid2qif](https://github.com/bhipple/plaid2qif/tree/master)
-- [dthigpen/plaid-cli-python](https://github.com/dthigpen/plaid-cli-python)
+- **[`ebridges/plaid2qif`](https://github.com/ebridges/plaid2qif)** No longer supported as of Feb. 2023. [`bhipple`](https://github.com/bhipple/plaid2qif/tree/master) fork also seems to have ceased development.
+- **[dthigpen/plaid-cli-python](https://github.com/dthigpen/plaid-cli-python)** Last updated Feb. 2024. No community development engagement. Uses `plaid-python` v17.0.0 (currently at 38.1.0)
 - [madhat2r/plaid2text](https://github.com/madhat2r/plaid2text)
