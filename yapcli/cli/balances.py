@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import typer
 
@@ -61,10 +61,62 @@ def get_accounts_for_institution(
     return backend.get_accounts()
 
 
+def discover_institutions(*, secrets_dir: Path) -> List[str]:
+    """Return institution ids that have both *_access_token and *_item_id files."""
+
+    institutions: List[str] = []
+    for access_file in secrets_dir.glob("*_access_token"):
+        identifier = access_file.name[: -len("_access_token")]
+        if not identifier:
+            continue
+        item_file = secrets_dir / f"{identifier}_item_id"
+        if item_file.exists():
+            institutions.append(identifier)
+
+    return sorted(set(institutions))
+
+
+def parse_institution_selection(selection: str, institutions: List[str]) -> List[str]:
+    """Parse comma-separated indices or institution ids.
+
+    Supports: "all" / "*" or "1,3" or "ins_123".
+    """
+
+    cleaned = selection.strip()
+    if not cleaned:
+        raise ValueError("Selection cannot be empty")
+
+    lowered = cleaned.lower()
+    if lowered in {"all", "*"}:
+        return list(institutions)
+
+    tokens = [token.strip() for token in cleaned.split(",") if token.strip()]
+    if not tokens:
+        raise ValueError("Selection cannot be empty")
+
+    selected: List[str] = []
+    for token in tokens:
+        if token.isdigit():
+            idx = int(token)
+            if idx < 1 or idx > len(institutions):
+                raise ValueError(f"Selection index out of range: {idx}")
+            chosen = institutions[idx - 1]
+        else:
+            if token not in institutions:
+                raise ValueError(f"Unknown institution: {token}")
+            chosen = token
+
+        if chosen not in selected:
+            selected.append(chosen)
+
+    return selected
+
+
 @app.command("balances")
 def get_balances(
-    institution_id: str = typer.Argument(
-        ..., help="Institution identifier used in secrets filenames (e.g. ins_109511)."
+    institution_id: Optional[str] = typer.Argument(
+        None,
+        help="Institution identifier used in secrets filenames (e.g. ins_109511). If omitted, you'll be prompted to select from saved institutions.",
     ),
     secrets_dir: Optional[Path] = typer.Option(
         None,
@@ -78,11 +130,50 @@ def get_balances(
 ) -> None:
     """Print the Plaid /accounts response for a saved institution."""
 
-    try:
-        payload = get_accounts_for_institution(
-            institution_id=institution_id, secrets_dir=secrets_dir
-        )
-    except (FileNotFoundError, ValueError) as exc:
-        raise typer.BadParameter(str(exc)) from exc
+    secrets_path = secrets_dir or _default_secrets_dir()
 
-    typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
+    selected_institutions: List[str]
+    if institution_id is None or institution_id.strip() == "":
+        available = discover_institutions(secrets_dir=secrets_path)
+        if not available:
+            raise typer.BadParameter(
+                f"No saved institutions found in secrets dir: {secrets_path}"
+            )
+
+        typer.echo("Saved institutions:")
+        for idx, inst in enumerate(available, start=1):
+            typer.echo(f"  {idx}. {inst}")
+
+        selection = typer.prompt(
+            "Select institution(s) (comma-separated numbers, 'all')",
+            default="1",
+            show_default=True,
+        )
+        try:
+            selected_institutions = parse_institution_selection(selection, available)
+        except ValueError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+    else:
+        selected_institutions = [institution_id]
+
+    results: Dict[str, Any]
+    if len(selected_institutions) == 1:
+        try:
+            payload = get_accounts_for_institution(
+                institution_id=selected_institutions[0], secrets_dir=secrets_path
+            )
+        except (FileNotFoundError, ValueError) as exc:
+            raise typer.BadParameter(str(exc)) from exc
+        typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
+        return
+
+    results = {}
+    for inst in selected_institutions:
+        try:
+            results[inst] = get_accounts_for_institution(
+                institution_id=inst, secrets_dir=secrets_path
+            )
+        except (FileNotFoundError, ValueError) as exc:
+            results[inst] = {"error": str(exc)}
+
+    typer.echo(json.dumps(results, indent=2, sort_keys=True, default=str))
