@@ -11,6 +11,8 @@ from rich.console import Console
 
 from yapcli import __version__
 from yapcli.cli.balances import app as balances_app
+from yapcli.cli.holdings import app as holdings_app
+from yapcli.cli.investment_transactions import app as investment_transactions_app
 from yapcli.cli.link import app as link_app
 from yapcli.cli.transactions import app as transactions_app
 from yapcli.logging import configure_logging
@@ -43,6 +45,8 @@ app = typer.Typer(
 )
 app.add_typer(link_app)
 app.add_typer(balances_app)
+app.add_typer(holdings_app)
+app.add_typer(investment_transactions_app)
 app.add_typer(transactions_app)
 
 
