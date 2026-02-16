@@ -61,10 +61,12 @@ def test_transactions_without_institution_prompts_and_writes_csv(
             return {"error": None, "item": {}, "institution": {"name": "Test Bank"}}
 
     import yapcli.cli.transactions as transactions
-    import yapcli.utils as utils
+    import yapcli.accounts as accounts
+    import yapcli.institutions as institutions
 
     monkeypatch.setattr(transactions, "PlaidBackend", FakeBackend)
-    monkeypatch.setattr(utils, "PlaidBackend", FakeBackend)
+    monkeypatch.setattr(accounts, "PlaidBackend", FakeBackend)
+    monkeypatch.setattr(institutions, "PlaidBackend", FakeBackend)
 
     class FakeCheckbox:
         def ask(self):
@@ -147,10 +149,12 @@ def test_transactions_with_account_ids_writes_csv_without_prompt(
             return {"error": None, "item": {}, "institution": {"name": "Test Bank"}}
 
     import yapcli.cli.transactions as transactions
-    import yapcli.utils as utils
+    import yapcli.accounts as accounts
+    import yapcli.institutions as institutions
 
     monkeypatch.setattr(transactions, "PlaidBackend", FakeBackend)
-    monkeypatch.setattr(utils, "PlaidBackend", FakeBackend)
+    monkeypatch.setattr(accounts, "PlaidBackend", FakeBackend)
+    monkeypatch.setattr(institutions, "PlaidBackend", FakeBackend)
 
     def fail_checkbox(*args, **kwargs):
         raise AssertionError("questionary.checkbox should not be called")
@@ -231,10 +235,12 @@ def test_transactions_with_institution_ids_all_accounts_skips_prompt(
             return {"error": None, "item": {}, "institution": {"name": "Test Bank"}}
 
     import yapcli.cli.transactions as transactions
-    import yapcli.utils as utils
+    import yapcli.accounts as accounts
+    import yapcli.institutions as institutions
 
     monkeypatch.setattr(transactions, "PlaidBackend", FakeBackend)
-    monkeypatch.setattr(utils, "PlaidBackend", FakeBackend)
+    monkeypatch.setattr(accounts, "PlaidBackend", FakeBackend)
+    monkeypatch.setattr(institutions, "PlaidBackend", FakeBackend)
 
     def fail_checkbox(*args, **kwargs):
         raise AssertionError("questionary.checkbox should not be called")
@@ -316,10 +322,12 @@ def test_transactions_all_accounts_without_ids_processes_everything(
             return {"error": None, "item": {}, "institution": {"name": "Test Bank"}}
 
     import yapcli.cli.transactions as transactions
-    import yapcli.utils as utils
+    import yapcli.accounts as accounts
+    import yapcli.institutions as institutions
 
     monkeypatch.setattr(transactions, "PlaidBackend", FakeBackend)
-    monkeypatch.setattr(utils, "PlaidBackend", FakeBackend)
+    monkeypatch.setattr(accounts, "PlaidBackend", FakeBackend)
+    monkeypatch.setattr(institutions, "PlaidBackend", FakeBackend)
 
     def fail_checkbox(*args, **kwargs):
         raise AssertionError("questionary.checkbox should not be called")

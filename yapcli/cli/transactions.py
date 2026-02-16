@@ -1,21 +1,17 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
-import questionary
 import typer
 
+from yapcli.accounts import DiscoveredAccount, _discover_accounts, _prompt_for_accounts
+from yapcli.institutions import discover_institutions
 from yapcli.secrets import default_secrets_dir, load_credentials
 from yapcli.server import PlaidBackend
-from yapcli.utils import (
-    DiscoveredInstitution,
-    discover_institutions,
-    timestamp_for_filename,
-)
+from yapcli.utils import timestamp_for_filename
 
 app = typer.Typer(help="Fetch transactions for a linked institution.")
 
@@ -28,24 +24,6 @@ _INSTITUTION_ID_RE = re.compile(r"ins_\d+")
 def _safe_filename_component(value: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", value.strip())
     return cleaned or "unknown"
-
-
-@dataclass(frozen=True)
-class DiscoveredAccount:
-    institution_id: str
-    bank_name: Optional[str]
-    account_id: str
-    name: Optional[str]
-    subtype: Optional[str]
-    mask: Optional[str]
-
-    def choice_title(self) -> str:
-        bank = self.bank_name or self.institution_id
-        display_name = self.name or "(unnamed)"
-        subtype = self.subtype or "unknown"
-        mask = f"••••{self.mask}" if self.mask else ""
-        return f"{bank} - {display_name} ({subtype}) {mask}".strip()
-
 
 def get_transactions_for_institution(
     *,
@@ -80,6 +58,7 @@ def _payload_to_dataframe(
                 frame.insert(1, "account_id", account.account_id)
             else:
                 frame["account_id"] = account.account_id
+            frame["account_type"] = account.type
             frame["account_name"] = account.name
             frame["account_subtype"] = account.subtype
             frame["account_mask"] = account.mask
@@ -96,93 +75,12 @@ def _payload_to_dataframe(
             frame.insert(1, "account_id", account.account_id)
         else:
             frame["account_id"] = account.account_id
+        frame["account_type"] = account.type
         frame["account_name"] = account.name
         frame["account_subtype"] = account.subtype
         frame["account_mask"] = account.mask
         frame["bank_name"] = account.bank_name
     return frame
-
-
-def _discover_accounts(
-    *, institutions: List[DiscoveredInstitution], secrets_dir: Path
-) -> List[DiscoveredAccount]:
-    results: List[DiscoveredAccount] = []
-    for inst in institutions:
-        try:
-            item_id, access_token = load_credentials(
-                institution_id=inst.institution_id, secrets_dir=secrets_dir
-            )
-            backend = PlaidBackend(access_token=access_token, item_id=item_id)
-            payload = backend.get_accounts()
-        except (FileNotFoundError, ValueError):
-            continue
-
-        accounts = payload.get("accounts") if isinstance(payload, dict) else None
-        if not isinstance(accounts, list):
-            continue
-
-        for account in accounts:
-            if not isinstance(account, dict):
-                continue
-            account_id = account.get("account_id")
-            if not isinstance(account_id, str) or not account_id:
-                continue
-
-            name = account.get("name") or account.get("official_name")
-            subtype = account.get("subtype")
-            mask = account.get("mask")
-
-            results.append(
-                DiscoveredAccount(
-                    institution_id=inst.institution_id,
-                    bank_name=inst.bank_name,
-                    account_id=account_id,
-                    name=str(name) if name is not None else None,
-                    subtype=str(subtype) if subtype is not None else None,
-                    mask=str(mask) if mask is not None else None,
-                )
-            )
-
-    return results
-
-
-def _prompt_for_accounts(accounts: List[DiscoveredAccount]) -> List[DiscoveredAccount]:
-    if not accounts:
-        raise ValueError("No accounts available")
-
-    account_by_key: Dict[str, DiscoveredAccount] = {}
-    choices: List[questionary.Choice] = []
-    for idx, account in enumerate(accounts):
-        key = f"{account.institution_id}|{account.account_id}"
-        account_by_key[key] = account
-        choices.append(
-            questionary.Choice(
-                title=account.choice_title(),
-                value=key,
-                checked=(idx == 0),
-            )
-        )
-
-    try:
-        selected_keys_raw = questionary.checkbox(
-            "Select account(s)",
-            choices=choices,
-        ).ask()
-    except KeyboardInterrupt as exc:
-        raise ValueError("Selection cancelled") from exc
-
-    if not selected_keys_raw:
-        raise ValueError("No accounts selected")
-
-    selected_keys = cast(List[str], selected_keys_raw)
-
-    selected: List[DiscoveredAccount] = []
-    for key in selected_keys:
-        maybe_account = account_by_key.get(key)
-        if maybe_account is not None:
-            selected.append(maybe_account)
-    return selected
-
 
 @app.command("transactions")
 def get_transactions(

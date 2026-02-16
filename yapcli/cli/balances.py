@@ -8,12 +8,12 @@ import typer
 
 from yapcli.secrets import default_secrets_dir, load_credentials
 from yapcli.server import PlaidBackend
-from yapcli.utils import (
+from yapcli.institutions import (
     DiscoveredInstitution,
     discover_institutions,
     prompt_for_institutions,
-    timestamp_for_filename,
 )
+from yapcli.utils import timestamp_for_filename
 
 app = typer.Typer(help="Fetch account/balance information for a linked institution.")
 

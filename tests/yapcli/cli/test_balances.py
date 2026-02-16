@@ -79,10 +79,10 @@ def test_balances_without_institution_prompts_and_allows_all_selection(
             return {"error": None, "item": {}, "institution": {"name": "Test Bank"}}
 
     import yapcli.cli.balances as balances
-    import yapcli.utils as utils
+    import yapcli.institutions as institutions
 
     monkeypatch.setattr(balances, "PlaidBackend", FakeBackend)
-    monkeypatch.setattr(utils, "PlaidBackend", FakeBackend)
+    monkeypatch.setattr(institutions, "PlaidBackend", FakeBackend)
 
     class FakeCheckbox:
         def ask(self):
