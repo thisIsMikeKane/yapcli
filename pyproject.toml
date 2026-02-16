@@ -46,6 +46,7 @@ typecheck = [
   # Packages with missing type hints
   "loguru>=0.7.3",
   "python-dotenv>=1.2.1",
+  "questionary>=2.1.1",
   "typer>=0.15.3",
 ]
 

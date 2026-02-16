@@ -50,12 +50,16 @@ def discover_institutions(*, secrets_dir: Path) -> List[DiscoveredInstitution]:
             try:
                 backend = PlaidBackend(access_token=access_token, item_id=item_id)
                 payload = backend.get_item()
-                institution = payload.get("institution") if isinstance(payload, dict) else None
+                institution = (
+                    payload.get("institution") if isinstance(payload, dict) else None
+                )
                 if isinstance(institution, dict):
                     bank_name = institution.get("name")
             except Exception:
                 bank_name = None
 
-        results.append(DiscoveredInstitution(institution_id=identifier, bank_name=bank_name))
+        results.append(
+            DiscoveredInstitution(institution_id=identifier, bank_name=bank_name)
+        )
 
     return results
