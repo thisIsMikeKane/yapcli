@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import questionary
 import typer
 
 from yapcli.server import PlaidBackend
@@ -62,40 +63,39 @@ def get_accounts_for_institution(
     return backend.get_accounts()
 
 
-def parse_institution_selection(selection: str, institutions: List[str]) -> List[str]:
-    """Parse comma-separated indices or institution ids.
+def prompt_for_institutions(available: List[DiscoveredInstitution]) -> List[str]:
+    """Prompt user to select institution ids using questionary."""
 
-    Supports: "all" / "*" or "1,3" or "ins_123".
-    """
+    if not available:
+        raise ValueError("No saved institutions available")
 
-    cleaned = selection.strip()
-    if not cleaned:
-        raise ValueError("Selection cannot be empty")
+    choices: List[questionary.Choice] = []
+    for idx, entry in enumerate(available):
+        title = (
+            f"{entry.institution_id} ({entry.bank_name})"
+            if entry.bank_name
+            else entry.institution_id
+        )
+        choices.append(
+            questionary.Choice(
+                title=title,
+                value=entry.institution_id,
+                checked=(idx == 0),
+            )
+        )
 
-    lowered = cleaned.lower()
-    if lowered in {"all", "*"}:
-        return list(institutions)
+    try:
+        selected = questionary.checkbox(
+            "Select institution(s)",
+            choices=choices,
+        ).ask()
+    except KeyboardInterrupt as exc:
+        raise ValueError("Selection cancelled") from exc
 
-    tokens = [token.strip() for token in cleaned.split(",") if token.strip()]
-    if not tokens:
-        raise ValueError("Selection cannot be empty")
+    if not selected:
+        raise ValueError("No institutions selected")
 
-    selected: List[str] = []
-    for token in tokens:
-        if token.isdigit():
-            idx = int(token)
-            if idx < 1 or idx > len(institutions):
-                raise ValueError(f"Selection index out of range: {idx}")
-            chosen = institutions[idx - 1]
-        else:
-            if token not in institutions:
-                raise ValueError(f"Unknown institution: {token}")
-            chosen = token
-
-        if chosen not in selected:
-            selected.append(chosen)
-
-    return selected
+    return list(selected)
 
 
 @app.command("balances")
@@ -127,22 +127,8 @@ def get_balances(
                 f"No saved institutions found in secrets dir: {secrets_path}"
             )
 
-        available_ids = [entry.institution_id for entry in available]
-
-        typer.echo("Saved institutions:")
-        for idx, entry in enumerate(available, start=1):
-            if entry.bank_name:
-                typer.echo(f"  {idx}. {entry.institution_id} ({entry.bank_name})")
-            else:
-                typer.echo(f"  {idx}. {entry.institution_id}")
-
-        selection = typer.prompt(
-            "Select institution(s) (comma-separated numbers, 'all')",
-            default="1",
-            show_default=True,
-        )
         try:
-            selected_institutions = parse_institution_selection(selection, available_ids)
+            selected_institutions = prompt_for_institutions(available)
         except ValueError as exc:
             raise typer.BadParameter(str(exc)) from exc
     else:

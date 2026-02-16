@@ -83,10 +83,18 @@ def test_balances_without_institution_prompts_and_allows_all_selection(
     monkeypatch.setattr(balances, "PlaidBackend", FakeBackend)
     monkeypatch.setattr(utils, "PlaidBackend", FakeBackend)
 
+    class FakeCheckbox:
+        def ask(self):
+            return ["ins_1", "ins_2"]
+
+    def fake_checkbox(*args, **kwargs):
+        return FakeCheckbox()
+
+    monkeypatch.setattr(balances.questionary, "checkbox", fake_checkbox)
+
     result = runner.invoke(
         cli.app,
         ["balances", "--secrets-dir", str(secrets_dir)],
-        input="all\n",
     )
 
     assert result.exit_code == 0
