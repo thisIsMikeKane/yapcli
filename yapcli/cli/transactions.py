@@ -25,6 +25,7 @@ def _safe_filename_component(value: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", value.strip())
     return cleaned or "unknown"
 
+
 def get_transactions_for_institution(
     *,
     institution_id: str,
@@ -81,6 +82,7 @@ def _payload_to_dataframe(
         frame["account_mask"] = account.mask
         frame["bank_name"] = account.bank_name
     return frame
+
 
 @app.command("transactions")
 def get_transactions(
@@ -158,7 +160,9 @@ def get_transactions(
             )
 
         institutions = [institutions_by_id[value] for value in ids_list]
-        accounts = _discover_accounts(institutions=institutions, secrets_dir=secrets_path)
+        accounts = _discover_accounts(
+            institutions=institutions, secrets_dir=secrets_path
+        )
         if not accounts:
             raise typer.BadParameter("No accounts found for provided institutions")
 

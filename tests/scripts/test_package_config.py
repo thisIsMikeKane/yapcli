@@ -9,10 +9,12 @@ def test_pyproject_has_correct_entry_point(project_root: Path) -> None:
     """Verify pyproject.toml has yapcli entry point."""
     pyproject = project_root / "pyproject.toml"
     content = pyproject.read_text()
-    
+
     assert "yapcli = " in content, "Entry point 'yapcli' not found"
-    assert "yapcli.cli.main:main" in content, "Entry point should reference yapcli.cli.main:main"
-    
+    assert (
+        "yapcli.cli.main:main" in content
+    ), "Entry point should reference yapcli.cli.main:main"
+
     # Old entry point should not exist
     assert "py-plaid" not in content, "Old entry point 'py-plaid' should be removed"
 
@@ -21,10 +23,14 @@ def test_package_data_configured(project_root: Path) -> None:
     """Verify pyproject.toml includes package data for frontend."""
     pyproject = project_root / "pyproject.toml"
     content = pyproject.read_text()
-    
-    assert "[tool.setuptools.package-data]" in content, "package-data configuration missing"
-    assert 'yapcli = ["frontend/build/**/*"]' in content, "Frontend build not in package-data"
-    
+
+    assert (
+        "[tool.setuptools.package-data]" in content
+    ), "package-data configuration missing"
+    assert (
+        'yapcli = ["frontend/build/**/*"]' in content
+    ), "Frontend build not in package-data"
+
     # Verify exclusions
     assert "exclude" in content, "Test exclusions not configured"
 

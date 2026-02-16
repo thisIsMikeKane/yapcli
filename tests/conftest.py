@@ -19,7 +19,7 @@ def frontend_build(project_root: Path) -> Path:
     build_script = project_root / "scripts" / "build_frontend.py"
     if not build_script.exists():
         pytest.skip("scripts/build_frontend.py not found")
-    
+
     # Run the build script
     result = subprocess.run(
         [sys.executable, str(build_script)],
@@ -27,12 +27,12 @@ def frontend_build(project_root: Path) -> Path:
         capture_output=True,
         text=True,
     )
-    
+
     if result.returncode != 0:
         pytest.skip(f"Frontend build failed: {result.stderr}")
-    
+
     expected_build = project_root / "yapcli" / "frontend" / "build"
     if not expected_build.exists():
         pytest.skip("Frontend build directory not created")
-    
+
     return expected_build

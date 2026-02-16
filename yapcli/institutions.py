@@ -53,13 +53,17 @@ def discover_institutions(*, secrets_dir: Path) -> List[DiscoveredInstitution]:
             try:
                 backend = PlaidBackend(access_token=access_token, item_id=item_id)
                 payload = backend.get_item()
-                institution = payload.get("institution") if isinstance(payload, dict) else None
+                institution = (
+                    payload.get("institution") if isinstance(payload, dict) else None
+                )
                 if isinstance(institution, dict):
                     bank_name = institution.get("name")
             except Exception:
                 bank_name = None
 
-        results.append(DiscoveredInstitution(institution_id=identifier, bank_name=bank_name))
+        results.append(
+            DiscoveredInstitution(institution_id=identifier, bank_name=bank_name)
+        )
 
     if not results:
         raise ValueError(
@@ -82,7 +86,9 @@ def prompt_for_institutions(
     choices: List[questionary.Choice] = []
     for idx, entry in enumerate(available):
         title = (
-            f"{entry.institution_id} ({entry.bank_name})" if entry.bank_name else entry.institution_id
+            f"{entry.institution_id} ({entry.bank_name})"
+            if entry.bank_name
+            else entry.institution_id
         )
         choices.append(
             questionary.Choice(

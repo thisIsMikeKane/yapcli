@@ -23,7 +23,7 @@ def _get_default_log_dir() -> Path:
     env_log_dir = os.getenv("YAPCLI_LOG_DIR")
     if env_log_dir:
         return Path(env_log_dir)
-    
+
     # Try to use project root if running from source
     try:
         project_root = Path(__file__).resolve().parents[2]
@@ -33,7 +33,7 @@ def _get_default_log_dir() -> Path:
             return dev_logs
     except (IndexError, OSError):
         pass
-    
+
     # Fall back to user home directory for installed packages
     return Path.home() / ".yapcli" / "logs"
 

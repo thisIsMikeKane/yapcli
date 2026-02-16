@@ -6,7 +6,9 @@ Thanks for helping improve Plaid CLI! This project uses UV for dependency manage
 
 ### Prerequisites
 
-1. **Install [uv](https://docs.astral.sh/uv/)**
+1. **Install [pipx](https://pipx.pypa.io/stable/installation/)**
+
+2. **Install [uv](https://docs.astral.sh/uv/)**
 
    ```bash
    pipx install uv
@@ -14,11 +16,13 @@ Thanks for helping improve Plaid CLI! This project uses UV for dependency manage
 
    Reload your shell and verify `uv --version`.
 
-2. **Install [tox](https://tox.wiki)** (optional)
+3. **Install [tox](https://tox.wiki)** (optional)
 
    ```bash
    pipx install tox
    ```
+
+4. **Install [node.js](https://nodejs.org/en/download)**  and npm for building the frontend
 
 ### Create uv environments and set as default for VS Code project
 
@@ -51,11 +55,6 @@ Thanks for helping improve Plaid CLI! This project uses UV for dependency manage
 ## Building and publishing
 
 This project uses standard Python build tooling (PEP 517/518) with git-derived versions.
-
-### Prerequisites
-
-- Node.js and npm (for building the frontend)
-- Python build tools
 
 ### Build Process
 
