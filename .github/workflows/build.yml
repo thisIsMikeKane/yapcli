@@ -1,0 +1,99 @@
+name: Build and Test Package
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+
+    - name: Install project dependencies
+      run: |
+        pip install -e .[dev]
+
+    - name: Build frontend
+      run: |
+        python scripts/build_frontend.py
+
+    - name: Verify frontend build
+      run: |
+        ls -la yapcli/frontend/build/
+        test -f yapcli/frontend/build/index.html
+
+    - name: Build package
+      run: |
+        python -m build
+
+    - name: Check package contents
+      run: |
+        tar -tzf dist/*.tar.gz | grep frontend || (echo "Frontend not found in package" && exit 1)
+
+    - name: Verify package metadata
+      run: |
+        python -m twine check dist/*
+
+    - name: Run tests
+      run: |
+        pytest tests/scripts/test_package_config.py -v
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: dist-packages
+        path: dist/
+
+  test-install:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: dist-packages
+        path: dist/
+
+    - name: Install package
+      run: |
+        pip install dist/*.whl
+
+    - name: Test command availability
+      run: |
+        yapcli --version
+        yapcli --help
+        yapcli link --help
+
+    - name: Verify frontend files installed
+      run: |
+        python -c "import yapcli; from pathlib import Path; pkg_dir = Path(yapcli.__file__).parent; frontend = pkg_dir / 'frontend' / 'build' / 'index.html'; assert frontend.exists(), f'Frontend not found at {frontend}'"

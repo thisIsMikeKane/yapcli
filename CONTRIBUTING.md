@@ -52,18 +52,86 @@ Thanks for helping improve Plaid CLI! This project uses UV for dependency manage
 
 This project uses standard Python build tooling (PEP 517/518) with git-derived versions.
 
-1. **Build the package**
+### Prerequisites
+
+- Node.js and npm (for building the frontend)
+- Python build tools
+
+### Build Process
+
+1. **Build the React frontend**
+
+   The frontend must be built before packaging:
+
+   ```bash
+   python scripts/build_frontend.py
+   ```
+
+   This will:
+   - Install npm dependencies in the `frontend/` directory
+   - Build the React app with `npm run build`
+   - Copy the build output to `yapcli/frontend/build/`
+
+   Alternatively, use the automated preparation script:
+
+   ```bash
+   python scripts/prepare_package.py
+   ```
+
+2. **Build the Python package**
 
    ```bash
    uv tool install build
    python -m build
    ```
 
-2. **Publish to PyPI**
+   This creates both source distribution (`.tar.gz`) and wheel (`.whl`) in the `dist/` directory.
+
+3. **Validate the package**
 
    ```bash
    uv tool install twine
+   python -m twine check dist/*
+   ```
+
+   Verify the frontend is included:
+
+   ```bash
+   tar -tzf dist/*.tar.gz | grep frontend
+   ```
+
+4. **Publish to PyPI**
+
+   ```bash
    twine upload dist/*
    ```
+
+   Or use the preparation script with upload:
+
+   ```bash
+   python scripts/prepare_package.py --upload
+   ```
+
+### Automated Build Script
+
+The `scripts/prepare_package.py` script automates the entire process:
+
+```bash
+# Clean, build, and validate
+python scripts/prepare_package.py
+
+# Build and upload to Test PyPI
+python scripts/prepare_package.py --test-pypi
+
+# Build and upload to PyPI
+python scripts/prepare_package.py --upload
+```
+
+### Package Contents
+
+The built package includes:
+- Python CLI application
+- Bundled React frontend (Plaid Link UI) at `yapcli/frontend/build/`
+- All Python dependencies
 
 Version numbers are derived from Git tags via `setuptools-scm`. Create a tag like `v0.1.0` and the build will use it automatically.

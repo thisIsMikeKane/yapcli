@@ -16,8 +16,29 @@ from yapcli.cli.transactions import app as transactions_app
 from yapcli.logging import configure_logging
 
 console = Console()
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-LOG_DIR = Path(os.getenv("YAPCLI_LOG_DIR", str(PROJECT_ROOT / "logs")))
+
+
+def _get_default_log_dir() -> Path:
+    """Get the default log directory, using user home for installed packages."""
+    env_log_dir = os.getenv("YAPCLI_LOG_DIR")
+    if env_log_dir:
+        return Path(env_log_dir)
+    
+    # Try to use project root if running from source
+    try:
+        project_root = Path(__file__).resolve().parents[2]
+        dev_logs = project_root / "logs"
+        # Check if we're in a development environment
+        if (project_root / "pyproject.toml").exists():
+            return dev_logs
+    except (IndexError, OSError):
+        pass
+    
+    # Fall back to user home directory for installed packages
+    return Path.home() / ".yapcli" / "logs"
+
+
+LOG_DIR = _get_default_log_dir()
 
 _LOGGING_CONFIGURED = False
 

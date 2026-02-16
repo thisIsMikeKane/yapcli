@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [project.scripts]
-py-plaid = "yapcli.cli:app"
+yapcli = "yapcli.cli.main:main"
 
 [project.urls]
 Homepage = "https://github.com/thisIsMikeKane/plaid-cli-python"
@@ -62,6 +62,11 @@ tox = [
   "tox>=4.25",
 ]
 
+build = [
+  "build>=1.0",
+  "twine>=5.0",
+]
+
 dev = [
   "ipykernel>=6.0",
   "pip>=24.2",
@@ -70,6 +75,7 @@ dev = [
   { include-group = "typecheck" },
   { include-group = "test" },
   { include-group = "tox" },
+  { include-group = "build" },
 ]
 
 [tool.mypy]
@@ -82,3 +88,7 @@ ignore_missing_imports = true
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["yapcli*"]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+yapcli = ["frontend/build/**/*"]

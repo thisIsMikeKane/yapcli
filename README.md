@@ -12,14 +12,46 @@ A CLI for exporting Plaid API requests to plain text for importing into accounti
 
 ## Prerequisites
 
+- Python 3.12+
+- [pipx](https://pipx.pypa.io/) for installation
+
 [ ] TODO explain how to get Plaid developer credentials
-[ ] TODO explain how to install pipx
 
 ## Quick start
 
+### Install from PyPI
+
 ```bash
-pipx install git+https://github.com/thisismikekane/plaid-cli-python.git
-plaid-cli --help
+pipx install yapcli
+yapcli --help
+```
+
+## Usage
+
+### Link a Plaid account
+
+To link your financial institution and obtain credentials:
+
+```bash
+yapcli link
+```
+
+This will:
+1. Start a local Flask backend server
+2. Serve the React frontend (Plaid Link UI)
+3. Open your browser to complete the Plaid Link flow
+4. Save the credentials to `~/.yapcli/secrets/`
+
+### Export transactions
+
+```bash
+yapcli transactions --help
+```
+
+### Check balances
+
+```bash
+yapcli balances --help
 ```
 
 ## Development environment
@@ -28,7 +60,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow.
 
 ## Project scripts
 
-The CLI entry point is defined in `pyproject.toml` under `[project.scripts]` as `plaid-cli = plaid_cli.cli:app`. Implement your Typer application in `src/plaid_cli/cli.py`.
+The CLI entry point is defined in `pyproject.toml` under `[project.scripts]` as `yapcli = "yapcli.cli.main:main"`. When installed via pipx or pip, the `yapcli` command becomes available in your PATH.
 
 ## Related works
 

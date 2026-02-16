@@ -20,10 +20,70 @@ from yapcli.logging import build_log_path
 console = Console()
 app = typer.Typer(help="Run Plaid Link locally and capture the resulting tokens.")
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-FRONTEND_DIR = PROJECT_ROOT / "frontend"
-DEFAULT_SECRETS_DIR = PROJECT_ROOT / "secrets"
-LOG_DIR = PROJECT_ROOT / "logs"
+
+def _get_frontend_dir() -> Path:
+    """Get the frontend directory, handling both dev and installed scenarios."""
+    # First try package-relative path (for installed package)
+    yapcli_package_dir = Path(__file__).resolve().parent.parent
+    packaged_frontend = yapcli_package_dir / "frontend" / "build"
+    
+    if packaged_frontend.exists():
+        return packaged_frontend.parent
+    
+    # Fall back to project root (for development)
+    project_root = yapcli_package_dir.parent
+    dev_frontend = project_root / "frontend"
+    
+    if dev_frontend.exists():
+        return dev_frontend
+    
+    # No frontend found
+    raise FileNotFoundError(
+        "Frontend directory not found. "
+        "Please ensure the package is properly built with the frontend included, "
+        "or run from the development directory."
+    )
+
+
+def _get_default_secrets_dir() -> Path:
+    """Get the default secrets directory."""
+    env_secrets_dir = os.getenv("YAPCLI_SECRETS_DIR")
+    if env_secrets_dir:
+        return Path(env_secrets_dir)
+    
+    # Try to use project root if running from source
+    try:
+        project_root = Path(__file__).resolve().parents[2]
+        if (project_root / "pyproject.toml").exists():
+            return project_root / "secrets"
+    except (IndexError, OSError):
+        pass
+    
+    # Fall back to user home directory for installed packages
+    return Path.home() / ".yapcli" / "secrets"
+
+
+def _get_default_log_dir() -> Path:
+    """Get the default log directory."""
+    env_log_dir = os.getenv("YAPCLI_LOG_DIR")
+    if env_log_dir:
+        return Path(env_log_dir)
+    
+    # Try to use project root if running from source
+    try:
+        project_root = Path(__file__).resolve().parents[2]
+        if (project_root / "pyproject.toml").exists():
+            return project_root / "logs"
+    except (IndexError, OSError):
+        pass
+    
+    # Fall back to user home directory for installed packages
+    return Path.home() / ".yapcli" / "logs"
+
+
+FRONTEND_DIR = _get_frontend_dir()
+DEFAULT_SECRETS_DIR = _get_default_secrets_dir()
+LOG_DIR = _get_default_log_dir()
 DEFAULT_BACKEND_PORT = 8000
 DEFAULT_FRONTEND_PORT = 3000
 POLL_INTERVAL_SECONDS = 2.0
@@ -44,7 +104,6 @@ def start_backend(port: int, secrets_dir: Path, log_path: Path) -> ManagedProces
     try:
         process = subprocess.Popen(
             [sys.executable, "-m", "yapcli.server"],
-            cwd=PROJECT_ROOT,
             env=env,
             stdout=log_file,
             stderr=subprocess.STDOUT,
