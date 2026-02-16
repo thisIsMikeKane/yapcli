@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -10,16 +9,12 @@ import typer
 from yapcli.accounts import DiscoveredAccount, resolve_target_accounts
 from yapcli.secrets import default_secrets_dir, load_credentials
 from yapcli.server import PlaidBackend
-from yapcli.utils import timestamp_for_filename
+from yapcli.utils import safe_filename_component, timestamp_for_filename
 
 app = typer.Typer(help="Fetch transactions for a linked institution.")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_TRANSACTIONS_OUTPUT_DIR = PROJECT_ROOT / "data" / "transactions"
-
-def _safe_filename_component(value: str) -> str:
-    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", value.strip())
-    return cleaned or "unknown"
 
 def get_transactions_for_institution(
     *,
@@ -141,8 +136,8 @@ def get_transactions(
             institution_id=account.institution_id,
             account=account,
         )
-        inst_component = _safe_filename_component(account.institution_id)
-        account_component = _safe_filename_component(account.mask or account.account_id)
+        inst_component = safe_filename_component(account.institution_id)
+        account_component = safe_filename_component(account.mask or account.account_id)
         out_path = (
             transactions_out_dir
             / f"{inst_component}_{account_component}_{timestamp}.csv"

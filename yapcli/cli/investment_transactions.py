@@ -1,6 +1,4 @@
 from __future__ import annotations
-
-import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -10,17 +8,12 @@ import typer
 from yapcli.accounts import DiscoveredAccount, resolve_target_accounts
 from yapcli.secrets import default_secrets_dir, load_credentials
 from yapcli.server import PlaidBackend
-from yapcli.utils import timestamp_for_filename
+from yapcli.utils import safe_filename_component, timestamp_for_filename
 
 app = typer.Typer(help="Fetch investment transactions for one or more accounts.")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_INVESTMENT_TRANSACTIONS_OUTPUT_DIR = PROJECT_ROOT / "data" / "investment_transactions"
-
-
-def _safe_filename_component(value: str) -> str:
-    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", value.strip())
-    return cleaned or "unknown"
 
 
 def get_investments_transactions_for_institution(
@@ -146,8 +139,8 @@ def get_investment_transactions(
             account=account,
         )
 
-        inst_component = _safe_filename_component(account.institution_id)
-        account_component = _safe_filename_component(account.mask or account.account_id)
+        inst_component = safe_filename_component(account.institution_id)
+        account_component = safe_filename_component(account.mask or account.account_id)
         out_path = out_base / f"{inst_component}_{account_component}_{timestamp}.csv"
         frame.to_csv(out_path, index=False)
         typer.echo(str(out_path))
