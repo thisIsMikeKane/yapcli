@@ -30,9 +30,10 @@ class DiscoveredAccount:
     def choice_title(self) -> str:
         bank = self.bank_name or self.institution_id
         display_name = self.name or "(unnamed)"
+        type = self.type or "unknown"
         subtype = self.subtype or "unknown"
         mask = f"••••{self.mask}" if self.mask else ""
-        return f"{bank} - {display_name} ({subtype}) {mask}".strip()
+        return f"{bank} - {display_name} ({type}/{subtype}) {mask}".strip()
 
 
 def _normalize_ids(ids: Optional[Sequence[str]]) -> List[str]:
@@ -76,6 +77,23 @@ def _validate_account_types(
     return allowed
 
 
+def _eligible_accounts(
+    *,
+    accounts: List[DiscoveredAccount],
+    allowed_types: Optional[Set[str]],
+) -> List[DiscoveredAccount]:
+    if allowed_types is None:
+        return accounts
+
+    eligible = [account for account in accounts if account.type in allowed_types]
+    if not eligible:
+        raise typer.BadParameter(
+            "No eligible accounts found. Allowed types: "
+            + ", ".join(sorted(allowed_types))
+        )
+    return eligible
+
+
 def resolve_target_accounts(
     *,
     ids: Optional[Sequence[str]],
@@ -105,6 +123,8 @@ def resolve_target_accounts(
         if not accounts:
             raise typer.BadParameter("No accounts found for saved institutions")
 
+        accounts = _eligible_accounts(accounts=accounts, allowed_types=allowed_account_types)
+
         if all_accounts:
             selected_accounts = accounts
         else:
@@ -113,11 +133,7 @@ def resolve_target_accounts(
             except ValueError as exc:
                 raise typer.BadParameter(str(exc)) from exc
 
-        return _validate_account_types(
-            selected_accounts=selected_accounts,
-            allowed_types=allowed_account_types,
-            ids_were_account_ids=False,
-        )
+        return selected_accounts
 
     # All ids match institution id pattern: treat as institutions.
     if all(is_institution_id):
@@ -133,6 +149,8 @@ def resolve_target_accounts(
         if not accounts:
             raise typer.BadParameter("No accounts found for provided institutions")
 
+        accounts = _eligible_accounts(accounts=accounts, allowed_types=allowed_account_types)
+
         if all_accounts:
             selected_accounts = accounts
         else:
@@ -141,11 +159,7 @@ def resolve_target_accounts(
             except ValueError as exc:
                 raise typer.BadParameter(str(exc)) from exc
 
-        return _validate_account_types(
-            selected_accounts=selected_accounts,
-            allowed_types=allowed_account_types,
-            ids_were_account_ids=False,
-        )
+        return selected_accounts
 
     # Mixed institutions + account ids is ambiguous.
     if any(is_institution_id):
