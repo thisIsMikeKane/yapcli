@@ -7,8 +7,7 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 import typer
 
-from yapcli.accounts import DiscoveredAccount, _discover_accounts, _prompt_for_accounts
-from yapcli.institutions import discover_institutions
+from yapcli.accounts import DiscoveredAccount, resolve_target_accounts
 from yapcli.secrets import default_secrets_dir, load_credentials
 from yapcli.server import PlaidBackend
 from yapcli.utils import timestamp_for_filename
@@ -17,9 +16,6 @@ app = typer.Typer(help="Fetch transactions for a linked institution.")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_TRANSACTIONS_OUTPUT_DIR = PROJECT_ROOT / "data" / "transactions"
-
-_INSTITUTION_ID_RE = re.compile(r"ins_\d+")
-
 
 def _safe_filename_component(value: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", value.strip())
@@ -119,97 +115,12 @@ def get_transactions(
 
     secrets_path = secrets_dir or default_secrets_dir()
 
-    discovered_institutions = discover_institutions(secrets_dir=secrets_path)
-
-    ids_list = [value for value in (ids or []) if value.strip() != ""]
-
-    is_institution_id = [
-        bool(_INSTITUTION_ID_RE.fullmatch(value)) for value in ids_list
-    ]
-
-    selected_accounts: List[DiscoveredAccount]
-
-    # No ids: preserve existing behavior (discover institutions and prompt for accounts).
-    if not ids_list:
-        accounts = _discover_accounts(
-            institutions=discovered_institutions,
-            secrets_dir=secrets_path,
-        )
-        if not accounts:
-            raise typer.BadParameter("No accounts found for saved institutions")
-
-        if all_accounts:
-            selected_accounts = accounts
-        else:
-            try:
-                selected_accounts = _prompt_for_accounts(accounts)
-            except ValueError as exc:
-                raise typer.BadParameter(str(exc)) from exc
-
-    # All ids match institution id pattern: treat as institutions.
-    elif all(is_institution_id):
-        institutions_by_id = {
-            inst.institution_id: inst for inst in discovered_institutions
-        }
-        unknown = [value for value in ids_list if value not in institutions_by_id]
-        if unknown:
-            raise typer.BadParameter(
-                "Unknown institution(s): " + ", ".join(sorted(set(unknown)))
-            )
-
-        institutions = [institutions_by_id[value] for value in ids_list]
-        accounts = _discover_accounts(institutions=institutions, secrets_dir=secrets_path)
-        if not accounts:
-            raise typer.BadParameter("No accounts found for provided institutions")
-
-        if all_accounts:
-            selected_accounts = accounts
-        else:
-            try:
-                selected_accounts = _prompt_for_accounts(accounts)
-            except ValueError as exc:
-                raise typer.BadParameter(str(exc)) from exc
-
-    # Mixed institutions + account ids is ambiguous.
-    elif any(is_institution_id):
-        raise typer.BadParameter(
-            "Pass either institution ids (ins_123) or account_ids, not a mix."
-        )
-
-    # Otherwise treat as a list of account_ids.
-    else:
-        if all_accounts:
-            raise typer.BadParameter(
-                "--all-accounts is only valid when passing institution ids."
-            )
-
-        accounts = _discover_accounts(
-            institutions=discovered_institutions,
-            secrets_dir=secrets_path,
-        )
-        if not accounts:
-            raise typer.BadParameter("No accounts found for saved institutions")
-
-        accounts_by_id: Dict[str, List[DiscoveredAccount]] = {}
-        for account in accounts:
-            accounts_by_id.setdefault(account.account_id, []).append(account)
-
-        missing = [value for value in ids_list if value not in accounts_by_id]
-        if missing:
-            raise typer.BadParameter(
-                "Unknown account_id(s): " + ", ".join(sorted(set(missing)))
-            )
-
-        ambiguous = [
-            value for value in ids_list if len(accounts_by_id.get(value, [])) > 1
-        ]
-        if ambiguous:
-            raise typer.BadParameter(
-                "Ambiguous account_id(s) (match multiple institutions): "
-                + ", ".join(sorted(set(ambiguous)))
-            )
-
-        selected_accounts = [accounts_by_id[value][0] for value in ids_list]
+    selected_accounts = resolve_target_accounts(
+        ids=ids,
+        secrets_dir=secrets_path,
+        all_accounts=all_accounts,
+        allowed_account_types={"depository", "credit", "loan", "other"},
+    )
 
     transactions_out_dir = out_dir or DEFAULT_TRANSACTIONS_OUTPUT_DIR
     transactions_out_dir.mkdir(parents=True, exist_ok=True)
