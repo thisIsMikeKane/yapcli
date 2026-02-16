@@ -1,0 +1,44 @@
+from __future__ import annotations
+
+import os
+from pathlib import Path
+from typing import Optional, Tuple
+
+SECRETS_DIR_ENV_VAR = "PLAID_SECRETS_DIR"
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_SECRETS_DIR = PROJECT_ROOT / "secrets"
+
+
+def default_secrets_dir() -> Path:
+    override = os.getenv(SECRETS_DIR_ENV_VAR)
+    if override:
+        return Path(override)
+    return DEFAULT_SECRETS_DIR
+
+
+def read_secret_required(path: Path, *, label: str) -> str:
+    try:
+        value = path.read_text().strip()
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(f"Missing {label} file: {path}") from exc
+
+    if not value:
+        raise ValueError(f"Empty {label} in file: {path}")
+
+    return value
+
+
+def load_credentials(
+    *, institution_id: str, secrets_dir: Optional[Path] = None
+) -> Tuple[str, str]:
+    """Load (item_id, access_token) for an institution_id from secrets files."""
+
+    secrets_path = secrets_dir or default_secrets_dir()
+    access_path = secrets_path / f"{institution_id}_access_token"
+    item_path = secrets_path / f"{institution_id}_item_id"
+
+    item_id = read_secret_required(item_path, label="item_id")
+    access_token = read_secret_required(access_path, label="access_token")
+
+    return item_id, access_token
