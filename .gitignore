@@ -1,8 +1,7 @@
-# Configuration and secrets
+# Configuration, secrets, logs, and data
 secrets/
-
-# Logs
 logs/
+data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -92,11 +92,22 @@ def test_balances_without_institution_prompts_and_allows_all_selection(
 
     monkeypatch.setattr(balances.questionary, "checkbox", fake_checkbox)
 
+    out_dir = tmp_path / "out"
+
     result = runner.invoke(
         cli.app,
-        ["balances", "--secrets-dir", str(secrets_dir)],
+        [
+            "balances",
+            "--secrets-dir",
+            str(secrets_dir),
+            "--out-dir",
+            str(out_dir),
+        ],
     )
 
     assert result.exit_code == 0
-    assert "ins_1" in result.output
-    assert "ins_2" in result.output
+
+    ins_1_files = list(out_dir.glob("ins_1_*.csv"))
+    ins_2_files = list(out_dir.glob("ins_2_*.csv"))
+    assert len(ins_1_files) == 1
+    assert len(ins_2_files) == 1

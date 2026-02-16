@@ -15,6 +15,7 @@ dependencies = [
   "Flask>=3.1.2",
   "itsdangerous>=2.2.0",
   "loguru>=0.7.3",
+  "pandas>=2.2.0",
   "plaid_python>=38.0.0",
   "python-dotenv>=1.2.1",
   "questionary>=2.1.1",
@@ -61,6 +62,7 @@ tox = [
 ]
 
 dev = [
+  "ipykernel>=6.0",
   "pip>=24.2",
   "pre-commit>=3.7",
   { include-group = "lint" },

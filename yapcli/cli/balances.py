@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import json
+import datetime as dt
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import pandas as pd
 import questionary
 import typer
 
@@ -12,6 +13,28 @@ from yapcli.server import PlaidBackend
 from yapcli.utils import DiscoveredInstitution, discover_institutions
 
 app = typer.Typer(help="Fetch account/balance information for a linked institution.")
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_BALANCES_OUTPUT_DIR = PROJECT_ROOT / "data" / "balances"
+
+
+def _timestamp_for_filename() -> str:
+    return dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+def _payload_to_dataframe(*, payload: Dict[str, Any], institution_id: str) -> pd.DataFrame:
+    accounts = payload.get("accounts")
+    if isinstance(accounts, list):
+        frame = pd.json_normalize(accounts)
+        frame.insert(0, "institution_id", institution_id)
+        request_id = payload.get("request_id")
+        if request_id is not None:
+            frame["request_id"] = request_id
+        return frame
+
+    frame = pd.json_normalize(payload)
+    frame.insert(0, "institution_id", institution_id)
+    return frame
 
 
 def get_accounts_for_institution(
@@ -76,6 +99,13 @@ def get_balances(
         dir_okay=True,
         readable=True,
     ),
+    out_dir: Optional[Path] = typer.Option(
+        None,
+        "--out-dir",
+        help="Directory to write CSV files into (default: data/balances).",
+        file_okay=False,
+        dir_okay=True,
+    ),
 ) -> None:
     """Print the Plaid /accounts response for a saved institution."""
 
@@ -97,24 +127,19 @@ def get_balances(
     else:
         selected_institutions = [institution_id]
 
-    results: Dict[str, Any]
-    if len(selected_institutions) == 1:
-        try:
-            payload = get_accounts_for_institution(
-                institution_id=selected_institutions[0], secrets_dir=secrets_path
-            )
-        except (FileNotFoundError, ValueError) as exc:
-            raise typer.BadParameter(str(exc)) from exc
-        typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
-        return
+    balances_out_dir = out_dir or DEFAULT_BALANCES_OUTPUT_DIR
+    balances_out_dir.mkdir(parents=True, exist_ok=True)
 
-    results = {}
+    timestamp = _timestamp_for_filename()
     for inst in selected_institutions:
         try:
-            results[inst] = get_accounts_for_institution(
+            payload = get_accounts_for_institution(
                 institution_id=inst, secrets_dir=secrets_path
             )
         except (FileNotFoundError, ValueError) as exc:
-            results[inst] = {"error": str(exc)}
+            payload = {"error": str(exc)}
 
-    typer.echo(json.dumps(results, indent=2, sort_keys=True, default=str))
+        frame = _payload_to_dataframe(payload=payload, institution_id=inst)
+        out_path = balances_out_dir / f"{inst}_{timestamp}.csv"
+        frame.to_csv(out_path, index=False)
+        typer.echo(str(out_path))
