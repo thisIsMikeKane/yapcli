@@ -14,6 +14,7 @@ from typing import Any, Callable, Dict, Optional
 
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify
+from loguru import logger
 import plaid
 from plaid.model.products import Products
 from plaid.model.country_code import CountryCode
@@ -169,7 +170,7 @@ class PlaidBackend:
             response = self.client.link_token_create(link_request)
             return response.to_dict()
         except plaid.ApiException as exc:
-            print(exc)
+            logger.exception("Plaid link_token_create failed")
             return json.loads(exc.body)
 
     def exchange_public_token(self, public_token: str) -> Dict[str, Any]:
@@ -187,8 +188,8 @@ class PlaidBackend:
                 )
                 item_payload = item_response.to_dict()
                 institution_id = item_payload.get("item", {}).get("institution_id")
-            except plaid.ApiException as item_exc:
-                print(item_exc)
+            except plaid.ApiException:
+                logger.exception("Plaid item_get failed while exchanging public_token")
 
             self.persist_credentials(
                 institution_id=institution_id,
@@ -320,7 +321,7 @@ class PlaidBackend:
 
     @staticmethod
     def pretty_print_response(response: Any) -> None:
-        print(json.dumps(response, indent=2, sort_keys=True, default=str))
+        logger.debug(json.dumps(response, indent=2, sort_keys=True, default=str))
 
     @staticmethod
     def format_error(exc: plaid.ApiException) -> Dict[str, Any]:
@@ -350,7 +351,7 @@ class PlaidBackend:
             (self.secrets_dir / f"{identifier}_item_id").write_text(item_id or "")
             (self.secrets_dir / f"{identifier}_access_token").write_text(token or "")
         except OSError as exc:
-            print(f"Unable to write tokens to {self.secrets_dir}: {exc}")
+            logger.warning("Unable to write tokens to {}: {}", self.secrets_dir, exc)
 
 
 # Module-level Flask app for compatibility with `flask run` and `python -m yapcli.server`.

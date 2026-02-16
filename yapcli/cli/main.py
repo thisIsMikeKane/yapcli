@@ -2,14 +2,39 @@
 
 from __future__ import annotations
 
+import datetime as dt
+import os
+from pathlib import Path
+
 import typer
 from rich.console import Console
 
 from yapcli import __version__
 from yapcli.cli.balances import app as balances_app
 from yapcli.cli.link import app as link_app
+from yapcli.utils import configure_logging
 
 console = Console()
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+LOG_DIR = Path(os.getenv("YAPCLI_LOG_DIR", str(PROJECT_ROOT / "logs")))
+
+_LOGGING_CONFIGURED = False
+
+
+def _configure_cli_logging(prefix: str) -> None:
+    global _LOGGING_CONFIGURED
+    if _LOGGING_CONFIGURED:
+        return
+
+    configure_logging(
+        log_dir=LOG_DIR,
+        prefix=prefix,
+        started_at=dt.datetime.now(),
+        level=os.getenv("YAPCLI_LOG_LEVEL", "INFO"),
+    )
+    _LOGGING_CONFIGURED = True
+
+
 app = typer.Typer(
     add_completion=False,
     no_args_is_help=True,
@@ -22,12 +47,14 @@ app.add_typer(balances_app)
 def _version_callback(value: bool) -> None:
     """Render the CLI version when the eager --version flag is provided."""
     if value:
+        _configure_cli_logging("version")
         console.print(f"[bold green]yapcli[/] v{__version__}")
         raise typer.Exit()
 
 
 @app.callback()
 def main_callback(
+    ctx: typer.Context,
     version: bool = typer.Option(
         False,
         "--version",
@@ -38,6 +65,9 @@ def main_callback(
     ),
 ) -> None:
     """Handle global CLI options before dispatching to sub-commands."""
+
+    prefix = ctx.invoked_subcommand or "cli"
+    _configure_cli_logging(prefix)
 
 
 def main() -> None:

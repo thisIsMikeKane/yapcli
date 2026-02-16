@@ -15,6 +15,8 @@ import typer
 from loguru import logger
 from rich.console import Console
 
+from yapcli.utils import build_log_path
+
 console = Console()
 app = typer.Typer(help="Run Plaid Link locally and capture the resulting tokens.")
 
@@ -25,27 +27,6 @@ LOG_DIR = PROJECT_ROOT / "logs"
 DEFAULT_BACKEND_PORT = 8000
 DEFAULT_FRONTEND_PORT = 3000
 POLL_INTERVAL_SECONDS = 2.0
-
-
-def build_log_path(prefix: str, started_at: dt.datetime) -> Path:
-    timestamp = started_at.strftime("%Y%m%d-%H%M%S")
-    return LOG_DIR / f"{prefix}-{timestamp}.log"
-
-
-def configure_logging(started_at: dt.datetime) -> Path:
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    log_path = build_log_path("link", started_at)
-
-    logger.remove()
-    logger.add(
-        log_path,
-        level="INFO",
-        enqueue=True,
-        format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {message}",
-    )
-
-    logger.info("Logging configured. Log file: {}", log_path)
-    return log_path
 
 
 @dataclass
@@ -279,11 +260,19 @@ def link(
     """
     started_at = time.time()
     started_dt = dt.datetime.fromtimestamp(started_at)
-    configure_logging(started_dt)
+    # Logging is configured once in the main Typer app callback.
 
     secrets_path = secrets_dir or DEFAULT_SECRETS_DIR
-    backend_log_path = build_log_path("backend", started_dt)
-    frontend_log_path = build_log_path("frontend", started_dt)
+    backend_log_path = build_log_path(
+        log_dir=LOG_DIR,
+        prefix="backend",
+        started_at=started_dt,
+    )
+    frontend_log_path = build_log_path(
+        log_dir=LOG_DIR,
+        prefix="frontend",
+        started_at=started_dt,
+    )
 
     backend_proc: Optional[ManagedProcess] = None
     frontend_proc: Optional[ManagedProcess] = None

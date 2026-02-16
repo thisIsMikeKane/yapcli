@@ -9,12 +9,13 @@ from pathlib import Path
 import pytest
 
 from yapcli.cli import link
+from yapcli.utils import build_log_path
 
 
 def test_build_log_path_uses_timestamp_and_prefix(tmp_path: Path) -> None:
     started_at = dt.datetime(2024, 1, 2, 3, 4, 5)
 
-    log_path = link.build_log_path("backend", started_at)
+    log_path = build_log_path(log_dir=link.LOG_DIR, prefix="backend", started_at=started_at)
 
     assert log_path.parent == link.LOG_DIR
     assert log_path.name.startswith("backend-20240102-030405")
