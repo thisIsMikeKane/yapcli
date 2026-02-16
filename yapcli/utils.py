@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import datetime as dt
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
+
+import questionary
 
 from yapcli.secrets import read_secret_required
 from yapcli.server import PlaidBackend
@@ -64,3 +67,48 @@ def discover_institutions(*, secrets_dir: Path) -> List[DiscoveredInstitution]:
         )
 
     return results
+
+
+def prompt_for_institutions(
+    available: List[DiscoveredInstitution],
+    *,
+    message: str = "Select institution(s)",
+) -> List[str]:
+    """Prompt user to select institution ids using questionary."""
+
+    if not available:
+        raise ValueError("No saved institutions available")
+
+    choices: List[questionary.Choice] = []
+    for idx, entry in enumerate(available):
+        title = (
+            f"{entry.institution_id} ({entry.bank_name})"
+            if entry.bank_name
+            else entry.institution_id
+        )
+        choices.append(
+            questionary.Choice(
+                title=title,
+                value=entry.institution_id,
+                checked=(idx == 0),
+            )
+        )
+
+    try:
+        selected = questionary.checkbox(
+            message,
+            choices=choices,
+        ).ask()
+    except KeyboardInterrupt as exc:
+        raise ValueError("Selection cancelled") from exc
+
+    if not selected:
+        raise ValueError("No institutions selected")
+
+    return list(selected)
+
+
+def timestamp_for_filename() -> str:
+    """UTC timestamp suitable for filenames (e.g. 20260215T032018Z)."""
+
+    return dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")

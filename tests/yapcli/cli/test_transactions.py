@@ -9,46 +9,7 @@ from typer.testing import CliRunner
 from yapcli import cli
 
 
-def test_get_accounts_for_institution_reads_secrets_and_calls_backend(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    secrets_dir = tmp_path / "secrets"
-    secrets_dir.mkdir()
-
-    (secrets_dir / "ins_109511_item_id").write_text("item-abc")
-    (secrets_dir / "ins_109511_access_token").write_text("access-xyz")
-
-    captured: Dict[str, Any] = {}
-
-    class FakeBackend:
-        def __init__(
-            self,
-            *,
-            access_token: str | None = None,
-            item_id: str | None = None,
-            env=None,
-        ) -> None:
-            captured["access_token"] = access_token
-            captured["item_id"] = item_id
-
-        def get_accounts(self) -> Dict[str, Any]:
-            return {"accounts": [{"id": "acct-1"}]}
-
-    import yapcli.cli.balances as balances_get
-
-    monkeypatch.setattr(balances_get, "PlaidBackend", FakeBackend)
-
-    payload = balances_get.get_accounts_for_institution(
-        institution_id="ins_109511",
-        secrets_dir=secrets_dir,
-    )
-
-    assert payload == {"accounts": [{"id": "acct-1"}]}
-    assert captured["access_token"] == "access-xyz"
-    assert captured["item_id"] == "item-abc"
-
-
-def test_balances_without_institution_prompts_and_allows_all_selection(
+def test_transactions_without_institution_prompts_and_writes_csv(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     runner = CliRunner()
@@ -71,16 +32,24 @@ def test_balances_without_institution_prompts_and_allows_all_selection(
             self.access_token = access_token
             self.item_id = item_id
 
-        def get_accounts(self) -> Dict[str, Any]:
-            return {"accounts": [{"token": self.access_token, "item": self.item_id}]}
+        def get_transactions(self) -> Dict[str, Any]:
+            return {
+                "latest_transactions": [
+                    {
+                        "transaction_id": f"txn-{self.access_token}",
+                        "amount": 12.34,
+                        "date": "2026-02-15",
+                    }
+                ]
+            }
 
         def get_item(self) -> Dict[str, Any]:
             return {"error": None, "item": {}, "institution": {"name": "Test Bank"}}
 
-    import yapcli.cli.balances as balances
+    import yapcli.cli.transactions as transactions
     import yapcli.utils as utils
 
-    monkeypatch.setattr(balances, "PlaidBackend", FakeBackend)
+    monkeypatch.setattr(transactions, "PlaidBackend", FakeBackend)
     monkeypatch.setattr(utils, "PlaidBackend", FakeBackend)
 
     class FakeCheckbox:
@@ -97,7 +66,7 @@ def test_balances_without_institution_prompts_and_allows_all_selection(
     result = runner.invoke(
         cli.app,
         [
-            "balances",
+            "transactions",
             "--secrets-dir",
             str(secrets_dir),
             "--out-dir",

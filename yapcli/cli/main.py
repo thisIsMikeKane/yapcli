@@ -12,6 +12,7 @@ from rich.console import Console
 from yapcli import __version__
 from yapcli.cli.balances import app as balances_app
 from yapcli.cli.link import app as link_app
+from yapcli.cli.transactions import app as transactions_app
 from yapcli.logging import configure_logging
 
 console = Console()
@@ -42,6 +43,7 @@ app = typer.Typer(
 )
 app.add_typer(link_app)
 app.add_typer(balances_app)
+app.add_typer(transactions_app)
 
 
 def _version_callback(value: bool) -> None:
