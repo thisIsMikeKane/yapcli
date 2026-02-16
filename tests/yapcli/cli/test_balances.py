@@ -74,9 +74,14 @@ def test_balances_without_institution_prompts_and_allows_all_selection(
         def get_accounts(self) -> Dict[str, Any]:
             return {"accounts": [{"token": self.access_token, "item": self.item_id}]}
 
+        def get_item(self) -> Dict[str, Any]:
+            return {"error": None, "item": {}, "institution": {"name": "Test Bank"}}
+
     import yapcli.cli.balances as balances
+    import yapcli.utils as utils
 
     monkeypatch.setattr(balances, "PlaidBackend", FakeBackend)
+    monkeypatch.setattr(utils, "PlaidBackend", FakeBackend)
 
     result = runner.invoke(
         cli.app,

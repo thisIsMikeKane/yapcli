@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import typer
 
 from yapcli.server import PlaidBackend
-from yapcli.utils import discover_institutions
+from yapcli.utils import DiscoveredInstitution, discover_institutions
 
 app = typer.Typer(help="Fetch account/balance information for a linked institution.")
 
@@ -120,15 +120,21 @@ def get_balances(
 
     selected_institutions: List[str]
     if institution_id is None or institution_id.strip() == "":
-        available = discover_institutions(secrets_dir=secrets_path)
+        discovered = discover_institutions(secrets_dir=secrets_path)
+        available: List[DiscoveredInstitution] = list(discovered)
         if not available:
             raise typer.BadParameter(
                 f"No saved institutions found in secrets dir: {secrets_path}"
             )
 
+        available_ids = [entry.institution_id for entry in available]
+
         typer.echo("Saved institutions:")
-        for idx, inst in enumerate(available, start=1):
-            typer.echo(f"  {idx}. {inst}")
+        for idx, entry in enumerate(available, start=1):
+            if entry.bank_name:
+                typer.echo(f"  {idx}. {entry.institution_id} ({entry.bank_name})")
+            else:
+                typer.echo(f"  {idx}. {entry.institution_id}")
 
         selection = typer.prompt(
             "Select institution(s) (comma-separated numbers, 'all')",
@@ -136,7 +142,7 @@ def get_balances(
             show_default=True,
         )
         try:
-            selected_institutions = parse_institution_selection(selection, available)
+            selected_institutions = parse_institution_selection(selection, available_ids)
         except ValueError as exc:
             raise typer.BadParameter(str(exc)) from exc
     else:
