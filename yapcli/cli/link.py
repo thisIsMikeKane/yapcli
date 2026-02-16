@@ -36,10 +36,18 @@ class ManagedProcess:
     log_handle: IO[str]
 
 
-def start_backend(port: int, secrets_dir: Path, log_path: Path) -> ManagedProcess:
+def start_backend(
+    port: int,
+    secrets_dir: Path,
+    log_path: Path,
+    *,
+    products: Optional[str] = None,
+) -> ManagedProcess:
     env = os.environ.copy()
     env["PORT"] = str(port)
     env["PLAID_SECRETS_DIR"] = str(secrets_dir)
+    if products is not None and products.strip() != "":
+        env["PLAID_PRODUCTS"] = products
 
     log_file = log_path.open("w")
     try:
@@ -260,6 +268,14 @@ def link(
         help="Automatically open the frontend in your browser.",
         show_default=True,
     ),
+    products: Optional[str] = typer.Option(
+        None,
+        "--products",
+        help=(
+            "Comma-separated Plaid products to request during Link (overrides PLAID_PRODUCTS). "
+            "Example: --products=transactions,investments"
+        ),
+    ),
 ) -> None:
     """
     Launch Plaid Link locally and wait for user to complete the flow returning an item_id and access_token.
@@ -292,7 +308,12 @@ def link(
             secrets_path,
         )
         console.print("[cyan]Starting Flask backend...[/]")
-        backend_proc = start_backend(backend_port, secrets_path, backend_log_path)
+        backend_proc = start_backend(
+            backend_port,
+            secrets_path,
+            backend_log_path,
+            products=products,
+        )
         console.print(
             f"[green]Backend running[/] on http://127.0.0.1:{backend_port}/api (log: {backend_log_path})"
         )

@@ -129,12 +129,34 @@ class PlaidBackend:
         api_client = plaid.ApiClient(configuration)
         self.client = plaid_api.PlaidApi(api_client)
 
-        self.products = [Products(product) for product in self.plaid_products]
-
         # We store the access_token in memory - in production, store it in a secure
         # persistent data store.
         self.access_token: Optional[str] = access_token
         self.item_id: Optional[str] = item_id
+
+        # If we have an existing item context, prune requested products to match
+        # item.consented_products. This avoids downstream failures when a user
+        # has PLAID_PRODUCTS configured more broadly than a given institution.
+        if self.access_token and self.item_id:
+            try:
+                item_payload = self.get_item(include_institution=False)
+                item = item_payload.get("item") if isinstance(item_payload, dict) else None
+                consented_raw = item.get("consented_products") if isinstance(item, dict) else None
+                if isinstance(consented_raw, list):
+                    consented = [p for p in consented_raw if isinstance(p, str) and p]
+                    if consented:
+                        requested = [p.strip() for p in self.plaid_products if p.strip()]
+                        filtered = [p for p in requested if p in consented]
+                        # Prefer the intersection; if empty, fall back to the consented list.
+                        self.plaid_products = filtered or consented
+            except Exception:
+                # Best-effort only; never block initialization.
+                logger.debug(
+                    "Unable to prune PLAID_PRODUCTS using item.consented_products",
+                    exc_info=True,
+                )
+
+        self.products = [Products(product) for product in self.plaid_products]
 
         self.app = Flask(__name__)
         self._register_routes(self.app)
@@ -314,28 +336,40 @@ class PlaidBackend:
         except plaid.ApiException as exc:
             return self.format_error(exc)
 
-    def get_item(self) -> Dict[str, Any]:
+    def get_item(self, *, include_institution: bool = True) -> Dict[str, Any]:
         try:
             item_request = ItemGetRequest(access_token=self.access_token)
             item_response = self.client.item_get(item_request)
 
-            institution_request = InstitutionsGetByIdRequest(
-                institution_id=item_response["item"]["institution_id"],
-                country_codes=list(
-                    map(lambda x: CountryCode(x), self.plaid_country_codes)
-                ),
-            )
-            institution_response = self.client.institutions_get_by_id(
-                institution_request
-            )
+            item_payload = item_response.to_dict()
+            item = item_payload.get("item")
 
-            self.pretty_print_response(item_response.to_dict())
-            self.pretty_print_response(institution_response.to_dict())
-            return {
-                "error": None,
-                "item": item_response.to_dict()["item"],
-                "institution": institution_response.to_dict()["institution"],
-            }
+            institution = None
+            if include_institution and isinstance(item, dict):
+                institution_id = item.get("institution_id")
+                if isinstance(institution_id, str) and institution_id:
+                    institution_request = InstitutionsGetByIdRequest(
+                        institution_id=institution_id,
+                        country_codes=list(
+                            map(lambda x: CountryCode(x), self.plaid_country_codes)
+                        ),
+                    )
+                    try:
+                        institution_response = self.client.institutions_get_by_id(
+                            institution_request
+                        )
+                        institution = institution_response.to_dict().get("institution")
+                    except plaid.ApiException:
+                        logger.exception(
+                            "Plaid institutions_get_by_id failed for institution_id=%s",
+                            institution_id,
+                        )
+
+            self.pretty_print_response(item_payload)
+            if include_institution and institution is not None:
+                self.pretty_print_response({"institution": institution})
+
+            return {"error": None, "item": item, "institution": institution}
         except plaid.ApiException as exc:
             return self.format_error(exc)
 
