@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
+from yapcli.secrets import read_secret_required
 from yapcli.server import PlaidBackend
 
 
@@ -11,14 +12,6 @@ from yapcli.server import PlaidBackend
 class DiscoveredInstitution:
     institution_id: str
     bank_name: Optional[str] = None
-
-
-def _read_secret(path: Path) -> Optional[str]:
-    try:
-        value = path.read_text().strip()
-    except FileNotFoundError:
-        return None
-    return value or None
 
 
 def discover_institutions(*, secrets_dir: Path) -> List[DiscoveredInstitution]:
@@ -42,8 +35,16 @@ def discover_institutions(*, secrets_dir: Path) -> List[DiscoveredInstitution]:
 
     results: List[DiscoveredInstitution] = []
     for identifier in sorted(set(identifiers)):
-        access_token = _read_secret(secrets_dir / f"{identifier}_access_token")
-        item_id = _read_secret(secrets_dir / f"{identifier}_item_id")
+        try:
+            access_token = read_secret_required(
+                secrets_dir / f"{identifier}_access_token", label="access_token"
+            )
+            item_id = read_secret_required(
+                secrets_dir / f"{identifier}_item_id", label="item_id"
+            )
+        except (FileNotFoundError, ValueError):
+            access_token = None
+            item_id = None
 
         bank_name: Optional[str] = None
         if access_token and item_id:
