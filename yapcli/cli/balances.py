@@ -22,7 +22,9 @@ def _timestamp_for_filename() -> str:
     return dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
-def _payload_to_dataframe(*, payload: Dict[str, Any], institution_id: str) -> pd.DataFrame:
+def _payload_to_dataframe(
+    *, payload: Dict[str, Any], institution_id: str
+) -> pd.DataFrame:
     accounts = payload.get("accounts")
     if isinstance(accounts, list):
         frame = pd.json_normalize(accounts)
