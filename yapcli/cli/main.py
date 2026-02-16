@@ -61,6 +61,16 @@ def _version_callback(value: bool) -> None:
 @app.callback()
 def main_callback(
     ctx: typer.Context,
+    production: bool = typer.Option(
+        False,
+        "--production",
+        help="Force PLAID_ENV=production for this command.",
+    ),
+    sandbox: bool = typer.Option(
+        False,
+        "--sandbox",
+        help="Force PLAID_ENV=sandbox for this command.",
+    ),
     version: bool = typer.Option(
         False,
         "--version",
@@ -71,6 +81,14 @@ def main_callback(
     ),
 ) -> None:
     """Handle global CLI options before dispatching to sub-commands."""
+
+    if production and sandbox:
+        raise typer.BadParameter("Pass only one of --production or --sandbox")
+
+    if production:
+        os.environ["PLAID_ENV"] = "production"
+    elif sandbox:
+        os.environ["PLAID_ENV"] = "sandbox"
 
     prefix = ctx.invoked_subcommand or "cli"
     _configure_cli_logging(prefix)

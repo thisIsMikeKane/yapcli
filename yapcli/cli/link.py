@@ -27,6 +27,7 @@ LOG_DIR = PROJECT_ROOT / "logs"
 DEFAULT_BACKEND_PORT = 8000
 DEFAULT_FRONTEND_PORT = 3000
 POLL_INTERVAL_SECONDS = 2.0
+STARTED_AT_TOLERANCE_SECONDS = 1.0
 
 
 @dataclass
@@ -171,7 +172,12 @@ def discover_credentials(
         except FileNotFoundError:
             continue
 
-        if access_updated < started_at or item_updated < started_at:
+        # Some filesystems have coarse mtime resolution (e.g. 1s). If we compare
+        # strictly against a high-resolution started_at, we can miss files that
+        # were written shortly after started_at but recorded with an earlier-
+        #rounded mtime.
+        cutoff = started_at - STARTED_AT_TOLERANCE_SECONDS
+        if access_updated < cutoff or item_updated < cutoff:
             continue
 
         updated = max(access_updated, item_updated)

@@ -47,6 +47,39 @@ def _empty_to_none(env: Dict[str, str], field: str) -> Optional[str]:
     return value
 
 
+def _resolve_plaid_env_and_secret(env: Dict[str, str]) -> tuple[str, Optional[str]]:
+    """Resolve effective Plaid environment + secret.
+
+    Rules:
+    - If PLAID_ENV is set, respect it.
+    - If PLAID_ENV is not set and both PLAID_SANDBOX_SECRET and
+      PLAID_PRODUCTION_SECRET are set, default to production.
+    - PLAID_SECRET takes precedence if set.
+    - Otherwise use the env-specific secret (PLAID_SANDBOX_SECRET or
+      PLAID_PRODUCTION_SECRET).
+    """
+
+    explicit_env = _empty_to_none(env, "PLAID_ENV")
+    sandbox_secret = _empty_to_none(env, "PLAID_SANDBOX_SECRET")
+    production_secret = _empty_to_none(env, "PLAID_PRODUCTION_SECRET")
+
+    if explicit_env is not None:
+        plaid_env = explicit_env
+    else:
+        if sandbox_secret is not None and production_secret is not None:
+            plaid_env = "production"
+        else:
+            plaid_env = "sandbox"
+
+    direct_secret = _empty_to_none(env, "PLAID_SECRET")
+    if direct_secret is not None:
+        return plaid_env, direct_secret
+
+    if plaid_env == "production":
+        return plaid_env, production_secret
+    return plaid_env, sandbox_secret
+
+
 class PlaidBackend:
     """Encapsulates Plaid client + credential state.
 
@@ -65,8 +98,7 @@ class PlaidBackend:
         self._env: Dict[str, str] = dict(env) if env is not None else dict(os.environ)
 
         self.plaid_client_id = self._env.get("PLAID_CLIENT_ID")
-        self.plaid_secret = self._env.get("PLAID_SECRET")
-        self.plaid_env = self._env.get("PLAID_ENV", "sandbox")
+        self.plaid_env, self.plaid_secret = _resolve_plaid_env_and_secret(self._env)
         self.plaid_products = self._env.get("PLAID_PRODUCTS", "transactions").split(",")
         self.plaid_country_codes = self._env.get("PLAID_COUNTRY_CODES", "US").split(",")
 
