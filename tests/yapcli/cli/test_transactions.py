@@ -32,11 +32,24 @@ def test_transactions_without_institution_prompts_and_writes_csv(
             self.access_token = access_token
             self.item_id = item_id
 
-        def get_transactions(self) -> Dict[str, Any]:
+        def get_accounts(self) -> Dict[str, Any]:
+            return {
+                "accounts": [
+                    {
+                        "account_id": f"acct-{self.access_token}",
+                        "name": "Checking",
+                        "subtype": "checking",
+                        "mask": "0000",
+                    }
+                ]
+            }
+
+        def get_transactions(self, *, account_id: str | None = None) -> Dict[str, Any]:
             return {
                 "latest_transactions": [
                     {
                         "transaction_id": f"txn-{self.access_token}",
+                        "account_id": account_id,
                         "amount": 12.34,
                         "date": "2026-02-15",
                     }
@@ -54,7 +67,7 @@ def test_transactions_without_institution_prompts_and_writes_csv(
 
     class FakeCheckbox:
         def ask(self):
-            return ["ins_1", "ins_2"]
+            return ["ins_1|acct-access-1", "ins_2|acct-access-2"]
 
     def fake_checkbox(*args, **kwargs):
         return FakeCheckbox()
@@ -76,7 +89,7 @@ def test_transactions_without_institution_prompts_and_writes_csv(
 
     assert result.exit_code == 0
 
-    ins_1_files = list(out_dir.glob("ins_1_*.csv"))
-    ins_2_files = list(out_dir.glob("ins_2_*.csv"))
+    ins_1_files = list(out_dir.glob("ins_1_acct-access-1_*.csv"))
+    ins_2_files = list(out_dir.glob("ins_2_acct-access-2_*.csv"))
     assert len(ins_1_files) == 1
     assert len(ins_2_files) == 1

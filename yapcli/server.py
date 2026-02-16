@@ -123,7 +123,8 @@ class PlaidBackend:
 
         @app.route("/api/transactions", methods=["GET"])
         def transactions_route():
-            return jsonify(self.get_transactions())
+            account_id = request.args.get("account_id")
+            return jsonify(self.get_transactions(account_id=account_id))
 
         @app.route("/api/balance", methods=["GET"])
         def balance_route():
@@ -203,7 +204,7 @@ class PlaidBackend:
         except plaid.ApiException as exc:
             return json.loads(exc.body)
 
-    def get_transactions(self) -> Dict[str, Any]:
+    def get_transactions(self, *, account_id: Optional[str] = None) -> Dict[str, Any]:
         cursor = ""
         added = []
         modified = []
@@ -226,7 +227,11 @@ class PlaidBackend:
                 has_more = response["has_more"]
                 self.pretty_print_response(response)
 
-            latest_transactions = sorted(added, key=lambda t: t["date"])[-8:]
+            filtered = added
+            if account_id:
+                filtered = [t for t in added if t.get("account_id") == account_id]
+
+            latest_transactions = sorted(filtered, key=lambda t: t["date"])[-8:]
             return {"latest_transactions": latest_transactions}
         except plaid.ApiException as exc:
             return self.format_error(exc)
