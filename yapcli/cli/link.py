@@ -15,7 +15,7 @@ import typer
 from loguru import logger
 from rich.console import Console
 
-from yapcli.utils import build_log_path
+from yapcli.logging import build_log_path
 
 console = Console()
 app = typer.Typer(help="Run Plaid Link locally and capture the resulting tokens.")

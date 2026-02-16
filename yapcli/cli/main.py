@@ -12,7 +12,7 @@ from rich.console import Console
 from yapcli import __version__
 from yapcli.cli.balances import app as balances_app
 from yapcli.cli.link import app as link_app
-from yapcli.utils import configure_logging
+from yapcli.logging import configure_logging
 
 console = Console()
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
