@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 import pytest
+import questionary
 from typer.testing import CliRunner
 
 from yapcli import cli
@@ -90,7 +91,7 @@ def test_balances_without_institution_prompts_and_allows_all_selection(
     def fake_checkbox(*args, **kwargs):
         return FakeCheckbox()
 
-    monkeypatch.setattr(utils.questionary, "checkbox", fake_checkbox)
+    monkeypatch.setattr(questionary, "checkbox", fake_checkbox)
 
     out_dir = tmp_path / "out"
 

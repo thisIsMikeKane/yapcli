@@ -66,6 +66,11 @@ def discover_institutions(*, secrets_dir: Path) -> List[DiscoveredInstitution]:
             DiscoveredInstitution(institution_id=identifier, bank_name=bank_name)
         )
 
+    if not results:
+        raise ValueError(
+            f"No saved institutions found in secrets dir: {secrets_dir}. Try running 'yapcli link' command first to save credentials."
+        )
+
     return results
 
 

@@ -80,4 +80,5 @@ module = ["plaid", "plaid.*"]
 ignore_missing_imports = true
 
 [tool.setuptools.packages.find]
-where = ["yapcli"]
+where = ["."]
+include = ["yapcli*"]

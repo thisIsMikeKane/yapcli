@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 import pytest
+import questionary
 from typer.testing import CliRunner
 
 from yapcli import cli
@@ -72,7 +73,7 @@ def test_transactions_without_institution_prompts_and_writes_csv(
     def fake_checkbox(*args, **kwargs):
         return FakeCheckbox()
 
-    monkeypatch.setattr(utils.questionary, "checkbox", fake_checkbox)
+    monkeypatch.setattr(questionary, "checkbox", fake_checkbox)
 
     out_dir = tmp_path / "out"
 
@@ -89,7 +90,7 @@ def test_transactions_without_institution_prompts_and_writes_csv(
 
     assert result.exit_code == 0
 
-    ins_1_files = list(out_dir.glob("ins_1_acct-access-1_*.csv"))
-    ins_2_files = list(out_dir.glob("ins_2_acct-access-2_*.csv"))
+    ins_1_files = list(out_dir.glob("ins_1_0000_*.csv"))
+    ins_2_files = list(out_dir.glob("ins_2_0000_*.csv"))
     assert len(ins_1_files) == 1
     assert len(ins_2_files) == 1

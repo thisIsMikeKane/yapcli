@@ -209,13 +209,7 @@ def get_transactions(
 
     secrets_path = secrets_dir or default_secrets_dir()
 
-    institutions: List[DiscoveredInstitution] = list(
-        discover_institutions(secrets_dir=secrets_path)
-    )
-    if not institutions:
-        raise typer.BadParameter(
-            f"No saved institutions found in secrets dir: {secrets_path}"
-        )
+    institutions = discover_institutions(secrets_dir=secrets_path)
 
     if institution_id is not None and institution_id.strip() != "":
         institutions = [
@@ -255,7 +249,7 @@ def get_transactions(
             account=account,
         )
         inst_component = _safe_filename_component(account.institution_id)
-        account_component = _safe_filename_component(account.account_id)
+        account_component = _safe_filename_component(account.mask or account.account_id)
         out_path = (
             transactions_out_dir
             / f"{inst_component}_{account_component}_{timestamp}.csv"
