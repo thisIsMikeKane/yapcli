@@ -272,7 +272,8 @@ def link(
         None,
         "--products",
         help=(
-            "Comma-separated Plaid products to request during Link (overrides PLAID_PRODUCTS). "
+            "Comma-separated Plaid products to request during Link."
+            "Defaults to PLAID_PRODUCTS env var or 'transactions' if not set. "
             "Example: --products=transactions,investments"
         ),
     ),
