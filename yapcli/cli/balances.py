@@ -1,54 +1,17 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import questionary
 import typer
 
+from yapcli.secrets import default_secrets_dir, load_credentials
 from yapcli.server import PlaidBackend
 from yapcli.utils import DiscoveredInstitution, discover_institutions
 
 app = typer.Typer(help="Fetch account/balance information for a linked institution.")
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_SECRETS_DIR = PROJECT_ROOT / "secrets"
-
-
-def _default_secrets_dir() -> Path:
-    override = os.getenv("PLAID_SECRETS_DIR")
-    if override:
-        return Path(override)
-    return DEFAULT_SECRETS_DIR
-
-
-def _read_secret(path: Path, *, label: str) -> str:
-    try:
-        value = path.read_text().strip()
-    except FileNotFoundError as exc:
-        raise FileNotFoundError(f"Missing {label} file: {path}") from exc
-
-    if not value:
-        raise ValueError(f"Empty {label} in file: {path}")
-
-    return value
-
-
-def load_credentials(
-    *, institution_id: str, secrets_dir: Optional[Path] = None
-) -> Tuple[str, str]:
-    """Load (item_id, access_token) for an institution_id from secrets files."""
-
-    secrets_path = secrets_dir or _default_secrets_dir()
-    access_path = secrets_path / f"{institution_id}_access_token"
-    item_path = secrets_path / f"{institution_id}_item_id"
-
-    item_id = _read_secret(item_path, label="item_id")
-    access_token = _read_secret(access_path, label="access_token")
-
-    return item_id, access_token
 
 
 def get_accounts_for_institution(
@@ -116,7 +79,7 @@ def get_balances(
 ) -> None:
     """Print the Plaid /accounts response for a saved institution."""
 
-    secrets_path = secrets_dir or _default_secrets_dir()
+    secrets_path = secrets_dir or default_secrets_dir()
 
     selected_institutions: List[str]
     if institution_id is None or institution_id.strip() == "":
