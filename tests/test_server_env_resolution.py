@@ -3,7 +3,9 @@ from __future__ import annotations
 from yapcli.server import _resolve_plaid_env_and_secret
 
 
-def test_defaults_to_production_when_both_env_secrets_defined_and_plaid_env_missing() -> None:
+def test_defaults_to_production_when_both_env_secrets_defined_and_plaid_env_missing() -> (
+    None
+):
     env = {
         "PLAID_CLIENT_ID": "client",
         "PLAID_SANDBOX_SECRET": "sandbox-secret",
@@ -17,7 +19,9 @@ def test_defaults_to_production_when_both_env_secrets_defined_and_plaid_env_miss
     assert plaid_secret == "production-secret"
 
 
-def test_uses_env_specific_secret_when_plaid_secret_missing_and_env_is_sandbox() -> None:
+def test_uses_env_specific_secret_when_plaid_secret_missing_and_env_is_sandbox() -> (
+    None
+):
     env = {
         "PLAID_CLIENT_ID": "client",
         "PLAID_ENV": "sandbox",
@@ -30,7 +34,9 @@ def test_uses_env_specific_secret_when_plaid_secret_missing_and_env_is_sandbox()
     assert plaid_secret == "sandbox-secret"
 
 
-def test_uses_env_specific_secret_when_plaid_secret_missing_and_env_is_production() -> None:
+def test_uses_env_specific_secret_when_plaid_secret_missing_and_env_is_production() -> (
+    None
+):
     env = {
         "PLAID_CLIENT_ID": "client",
         "PLAID_ENV": "production",

@@ -101,7 +101,9 @@ def test_terminate_process_stops_running_process(tmp_path: Path) -> None:
         log_handle.close()
 
 
-def test_start_backend_passes_products_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_start_backend_passes_products_env(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     secrets_dir = tmp_path / "secrets"
     secrets_dir.mkdir()
     log_path = tmp_path / "backend.log"
