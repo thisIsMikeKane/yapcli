@@ -19,6 +19,63 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_TRANSACTIONS_OUTPUT_DIR = PROJECT_ROOT / "data" / "transactions"
 
 
+_META_FILENAME_RE = re.compile(r"(?P<ts>\d{8}T\d{6}Z)_meta\.json$")
+
+
+def build_transactions_account_dir(*, out_dir: Path, account: DiscoveredAccount) -> Path:
+    inst_component = safe_filename_component(
+        str(account.institution_id) + "_" + str(account.bank_name)
+    )
+    account_component = safe_filename_component(
+        (account.mask or "0000") + "_" + str(account.name)
+    )
+    return out_dir / inst_component / account_component
+
+
+def _load_latest_meta_cursor(*, out_dir: Path, account: DiscoveredAccount) -> Optional[str]:
+    account_dir = build_transactions_account_dir(out_dir=out_dir, account=account)
+    if not account_dir.exists():
+        return None
+
+    meta_paths = [p for p in account_dir.glob("*_meta.json") if p.is_file()]
+    if not meta_paths:
+        return None
+
+    def sort_key(path: Path) -> tuple[str, float]:
+        match = _META_FILENAME_RE.search(path.name)
+        ts = match.group("ts") if match else ""
+        try:
+            mtime = path.stat().st_mtime
+        except OSError:
+            mtime = 0.0
+        return (ts, mtime)
+
+    latest_meta = sorted(meta_paths, key=sort_key, reverse=True)[0]
+    try:
+        meta = json.loads(latest_meta.read_text())
+    except OSError as exc:
+        raise typer.BadParameter(f"Unable to read meta file: {latest_meta} ({exc})") from exc
+    except json.JSONDecodeError as exc:
+        raise typer.BadParameter(f"Invalid JSON in meta file: {latest_meta} ({exc})") from exc
+
+    if not isinstance(meta, dict):
+        raise typer.BadParameter(f"Invalid meta file format (expected object): {latest_meta}")
+
+    meta_account_id = meta.get("account_id")
+    if meta_account_id != account.account_id:
+        raise typer.BadParameter(
+            f"Meta account_id mismatch for {latest_meta}: expected {account.account_id}, got {meta_account_id}"
+        )
+
+    meta_cursor = meta.get("cursor")
+    if not isinstance(meta_cursor, str) or meta_cursor.strip() == "":
+        raise typer.BadParameter(
+            f"Meta file missing non-empty cursor: {latest_meta}"
+        )
+
+    return meta_cursor.strip()
+
+
 def build_transactions_csv_path(
     *,
     out_dir: Path,
@@ -160,12 +217,22 @@ def get_transactions(
             "Start the Plaid transactions/sync from this cursor. Only valid when you pass exactly one account_id argument."
         ),
     ),
+    sync: bool = typer.Option(
+        False,
+        "--sync",
+        help=(
+            "Use the most recent *_meta.json for each account to resume from its saved cursor. "
+            "Looks in the account's output directory under --out-dir."
+        ),
+    ),
 ) -> None:
     """Fetch transactions for one or more accounts and write CSV(s)."""
 
     secrets_path = secrets_dir or default_secrets_dir()
 
     ids_list = [value for value in (ids or []) if value.strip() != ""]
+    if sync and cursor is not None:
+        raise typer.BadParameter("--sync cannot be used together with --cursor")
     if cursor is not None:
         if all_accounts:
             raise typer.BadParameter(
@@ -193,12 +260,19 @@ def get_transactions(
     timestamp = timestamp_for_filename()
     for account in selected_accounts:
 
+        effective_cursor = cursor
+        if sync and effective_cursor is None:
+            effective_cursor = _load_latest_meta_cursor(
+                out_dir=transactions_out_dir,
+                account=account,
+            )
+
         # Get transactions
         try:
             payload = get_transactions_for_institution(
                 institution_id=account.institution_id,
                 account_id=account.account_id,
-                cursor=cursor,
+                cursor=effective_cursor,
                 secrets_dir=secrets_path,
             )
         except (FileNotFoundError, ValueError) as exc:
