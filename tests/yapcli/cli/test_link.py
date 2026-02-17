@@ -7,8 +7,10 @@ import time
 from pathlib import Path
 
 import pytest
+from typer.testing import CliRunner
 
 from yapcli.cli import link
+from yapcli import cli as root_cli
 from yapcli.logging import build_log_path
 
 
@@ -132,3 +134,36 @@ def test_start_backend_passes_products_env(tmp_path: Path, monkeypatch: pytest.M
         assert captured_env.get("PLAID_PRODUCTS") == "transactions,investments"
     finally:
         managed.log_handle.close()
+
+
+def test_link_defaults_to_sandbox_secrets_dir(monkeypatch: pytest.MonkeyPatch) -> None:
+    runner = CliRunner()
+    seen: dict[str, Path] = {}
+
+    def fake_start_backend(port: int, secrets_dir: Path, log_path: Path, *, products=None):
+        seen["secrets_dir"] = secrets_dir
+        return None
+
+    monkeypatch.setattr(link, "start_backend", fake_start_backend)
+    monkeypatch.setattr(link, "start_frontend", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        link,
+        "wait_for_credentials",
+        lambda **kwargs: ("ins_1", "item-1", "access-1"),
+    )
+    monkeypatch.setattr(link, "terminate_process", lambda *args, **kwargs: None)
+
+    result = runner.invoke(
+        root_cli.app,
+        [
+            "--sandbox",
+            "link",
+            "--no-open-browser",
+            "--timeout",
+            "1",
+        ],
+    )
+
+    assert result.exit_code == 0
+
+    assert seen["secrets_dir"] == link.PROJECT_ROOT / "sandbox" / "secrets"

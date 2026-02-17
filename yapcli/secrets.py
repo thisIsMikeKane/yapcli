@@ -8,12 +8,15 @@ SECRETS_DIR_ENV_VAR = "PLAID_SECRETS_DIR"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SECRETS_DIR = PROJECT_ROOT / "secrets"
+DEFAULT_SANDBOX_SECRETS_DIR = PROJECT_ROOT / "sandbox" / "secrets"
 
 
 def default_secrets_dir() -> Path:
     override = os.getenv(SECRETS_DIR_ENV_VAR)
     if override:
         return Path(override)
+    if os.getenv("PLAID_ENV") == "sandbox":
+        return DEFAULT_SANDBOX_SECRETS_DIR
     return DEFAULT_SECRETS_DIR
 
 

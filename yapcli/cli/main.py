@@ -21,22 +21,6 @@ console = Console()
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 LOG_DIR = Path(os.getenv("YAPCLI_LOG_DIR", str(PROJECT_ROOT / "logs")))
 
-_LOGGING_CONFIGURED = False
-
-
-def _configure_cli_logging(prefix: str) -> None:
-    global _LOGGING_CONFIGURED
-    if _LOGGING_CONFIGURED:
-        return
-
-    configure_logging(
-        log_dir=LOG_DIR,
-        prefix=prefix,
-        started_at=dt.datetime.now(),
-        level=os.getenv("YAPCLI_LOG_LEVEL", "INFO"),
-    )
-    _LOGGING_CONFIGURED = True
-
 
 app = typer.Typer(
     add_completion=False,
@@ -53,7 +37,12 @@ app.add_typer(transactions_app)
 def _version_callback(value: bool) -> None:
     """Render the CLI version when the eager --version flag is provided."""
     if value:
-        _configure_cli_logging("version")
+        configure_logging(
+            log_dir=LOG_DIR,
+            prefix="version",
+            started_at=dt.datetime.now(),
+            level=os.getenv("YAPCLI_LOG_LEVEL", "INFO"),
+        )
         console.print(f"[bold green]yapcli[/] v{__version__}")
         raise typer.Exit()
 
@@ -61,6 +50,12 @@ def _version_callback(value: bool) -> None:
 @app.callback()
 def main_callback(
     ctx: typer.Context,
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable verbose debug logging (sets YAPCLI_LOG_LEVEL=DEBUG).",
+    ),
     production: bool = typer.Option(
         False,
         "--production",
@@ -74,7 +69,7 @@ def main_callback(
     version: bool = typer.Option(
         False,
         "--version",
-        "-v",
+        "-V",
         help="Show the CLI version and exit.",
         is_eager=True,
         callback=_version_callback,
@@ -90,8 +85,14 @@ def main_callback(
     elif sandbox:
         os.environ["PLAID_ENV"] = "sandbox"
 
+    level = "DEBUG" if verbose else os.getenv("YAPCLI_LOG_LEVEL", "INFO")
     prefix = ctx.invoked_subcommand or "cli"
-    _configure_cli_logging(prefix)
+    configure_logging(
+        log_dir=LOG_DIR,
+        prefix=prefix,
+        started_at=dt.datetime.now(),
+        level=level,
+    )
 
 
 def main() -> None:
