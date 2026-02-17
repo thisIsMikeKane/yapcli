@@ -32,9 +32,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install build twine
 
-    - name: Install project dependencies
+    - name: Install tox + tox-gh-actions plug-in
       run: |
-        pip install -e .[dev]
+        pip install "tox>=4.25" "tox-gh-actions>=3.3.0" "tox-uv>=1.25.0"
 
     - name: Build frontend
       run: |
@@ -44,6 +44,38 @@ jobs:
       run: |
         ls -la yapcli/frontend/build/
         test -f yapcli/frontend/build/index.html
+
+    - name: Setup test suite
+      run: tox run-parallel --parallel auto --parallel-no-spinner --notest --skip-missing-interpreters false
+
+    - name: Run tox
+      run: tox run-parallel --parallel auto --parallel-no-spinner --skip-pkg-install
+
+    - name: Build XML coverage
+      if: always()
+      run: |
+        python -Im pip install --quiet "coverage[toml]"
+        # Merge every .cover/.* created by tox in the `.cover/` directory into one .coverage
+        python -Im coverage combine .cover
+        # Produce the XML file Codecov will look for
+        python -Im coverage xml -i \
+            -o .cover/coverage.${{ matrix.python-version }}.xml
+
+    - name: Upload coverage to Codecov
+      if: always()
+      uses: codecov/codecov-action@v5
+      with:
+        files: .cover/coverage.${{ matrix.python-version }}.xml
+        flags: py${{ matrix.python-version }}
+        token: ${{ secrets.CODECOV_TOKEN }}
+
+    - name: Upload test results to Codecov
+      if: always()
+      uses: codecov/test-results-action@v1
+      with:
+        # pick up every junit.*.xml written by tox in the `.junit/` directory
+        files: .junit/junit.*.xml
+        token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: Build package
       run: |
@@ -56,10 +88,6 @@ jobs:
     - name: Verify package metadata
       run: |
         python -m twine check dist/*
-
-    - name: Run tests
-      run: |
-        pytest tests/scripts/test_package_config.py -v
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
