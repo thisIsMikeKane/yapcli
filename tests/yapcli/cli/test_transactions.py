@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Dict
+import json
 
 import pytest
 import questionary
@@ -99,6 +100,9 @@ def test_transactions_without_institution_prompts_and_writes_csv(
     assert sum("ins_1" in str(p) for p in csv_files) == 1
     assert sum("ins_2" in str(p) for p in csv_files) == 1
 
+    meta_files = list(out_dir.rglob("*_meta.json"))
+    assert len(meta_files) == 2
+
 
 def test_transactions_with_account_ids_writes_csv_without_prompt(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -186,6 +190,9 @@ def test_transactions_with_account_ids_writes_csv_without_prompt(
     assert len(csv_files) == 2
     assert sum("ins_1" in str(p) for p in csv_files) == 1
     assert sum("ins_2" in str(p) for p in csv_files) == 1
+
+    meta_files = list(out_dir.rglob("*_meta.json"))
+    assert len(meta_files) == 2
 
 
 def test_transactions_with_institution_ids_all_accounts_skips_prompt(
@@ -276,6 +283,9 @@ def test_transactions_with_institution_ids_all_accounts_skips_prompt(
     assert sum("ins_1" in str(p) for p in csv_files) == 1
     assert sum("ins_2" in str(p) for p in csv_files) == 1
 
+    meta_files = list(out_dir.rglob("*_meta.json"))
+    assert len(meta_files) == 2
+
 
 def test_transactions_all_accounts_without_ids_processes_everything(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -362,6 +372,9 @@ def test_transactions_all_accounts_without_ids_processes_everything(
     assert len(csv_files) == 2
     assert sum("ins_1" in str(p) for p in csv_files) == 1
     assert sum("ins_2" in str(p) for p in csv_files) == 1
+
+    meta_files = list(out_dir.rglob("*_meta.json"))
+    assert len(meta_files) == 2
 
 
 def test_transactions_warns_and_writes_modified_and_removed_csvs(
@@ -461,8 +474,11 @@ def test_transactions_warns_and_writes_modified_and_removed_csvs(
 
     csv_files = sorted(str(p) for p in out_dir.rglob("*.csv"))
     assert len(csv_files) == 3
-    assert any("_modified_" in p for p in csv_files)
-    assert any("_removed_" in p for p in csv_files)
+    assert any(p.endswith("_modified.csv") for p in csv_files)
+    assert any(p.endswith("_removed.csv") for p in csv_files)
+
+    meta_files = sorted(str(p) for p in out_dir.rglob("*_meta.json"))
+    assert len(meta_files) == 1
 
 
 def test_transactions_cursor_option_only_allowed_for_single_account_id(
@@ -582,6 +598,14 @@ def test_transactions_cursor_option_passes_cursor_to_backend_and_filename(
     assert result.exit_code == 0
     assert seen["cursor"] == requested_cursor
 
-    csv_files = [str(p) for p in out_dir.rglob("*.csv")]
+    csv_files = [p for p in out_dir.rglob("*.csv")]
     assert len(csv_files) == 1
-    assert any(requested_cursor in p for p in csv_files)
+
+    # Ensure account_id is not part of the account component path anymore.
+    assert "acct-access-1" not in str(csv_files[0])
+
+    meta_files = [p for p in out_dir.rglob("*_meta.json")]
+    assert len(meta_files) == 1
+    meta = json.loads(meta_files[0].read_text())
+    assert meta["account_id"] == "acct-access-1"
+    assert meta["cursor"] == requested_cursor

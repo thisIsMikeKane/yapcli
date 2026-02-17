@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import re
@@ -23,41 +24,42 @@ def build_transactions_csv_path(
     out_dir: Path,
     account: DiscoveredAccount,
     timestamp: str,
-    cursor: Optional[str],
     kind: Optional[str] = None,
 ) -> Path:
     inst_component = safe_filename_component(
         str(account.institution_id) + "_" + str(account.bank_name)
     )
     account_component = safe_filename_component(
-        str(account.account_id) + "_" + (account.mask or "0000") + "_" + str(account.name)
+        (account.mask or "0000") + "_" + str(account.name)
     )
-
-    cursor_component = ""
-    if isinstance(cursor, str) and cursor.strip() != "":
-        cursor_component = cursor.strip()
-        if len(cursor_component) > 128:
-            raise ValueError(f"Expected cursor length up to 128, got {len(cursor_component)}")
-        if re.fullmatch(r"[A-Za-z0-9=]+", cursor_component) is None:
-            raise ValueError(
-                "Cursor contains unexpected characters; expected only A-Za-z0-9._=-"
-                + f"Got cursor: {cursor_component}"
-            )
 
     kind_component = ""
     if isinstance(kind, str) and kind.strip() != "":
         kind_component = safe_filename_component(kind.strip())
 
-    filename = f"{timestamp}.csv"
-    if kind_component:
-        filename = f"{timestamp}_{kind_component}.csv"
-    if cursor_component:
-        if kind_component:
-            filename = f"{timestamp}_{kind_component}_{cursor_component}.csv"
-        else:
-            filename = f"{timestamp}_{cursor_component}.csv"
+    if not kind_component:
+        raise ValueError("Expected kind to build transactions CSV path")
+
+    filename = f"{timestamp}_{kind_component}.csv"
 
     return out_dir / inst_component / account_component / filename
+
+
+def build_transactions_meta_path(
+    *,
+    out_dir: Path,
+    account: DiscoveredAccount,
+    timestamp: str,
+) -> Path:
+    # Single meta file per run/timestamp, stored alongside the CSVs
+    # within the account output directory.
+    csv_path = build_transactions_csv_path(
+        out_dir=out_dir,
+        account=account,
+        timestamp=timestamp,
+        kind="transactions",
+    )
+    return csv_path.with_name(f"{timestamp}_meta.json")
 
 def get_transactions_for_institution(
     *,
@@ -72,8 +74,8 @@ def get_transactions_for_institution(
         institution_id=institution_id, secrets_dir=secrets_dir
     )
     backend = PlaidBackend(access_token=access_token, item_id=item_id)
-    if cursor is not None:
-        return backend.get_transactions(account_id=account_id, cursor=cursor)
+    if isinstance(cursor, str) and cursor.strip() != "":
+        return backend.get_transactions(account_id=account_id, cursor=cursor.strip())
     return backend.get_transactions(account_id=account_id)
 
 
@@ -213,11 +215,28 @@ def get_transactions(
             out_dir=transactions_out_dir,
             account=account,
             timestamp=timestamp,
-            cursor=payload.get("cursor"),
+            kind="transactions",
         )
         out_path.parent.mkdir(parents=True, exist_ok=True)
         frame.to_csv(out_path, index=False)
         typer.echo(str(out_path))
+
+        meta_path = build_transactions_meta_path(
+            out_dir=transactions_out_dir,
+            account=account,
+            timestamp=timestamp,
+        )
+        meta_path.parent.mkdir(parents=True, exist_ok=True)
+        meta_path.write_text(
+            json.dumps(
+                {
+                    "account_id": account.account_id,
+                    "cursor": payload.get("cursor"),
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
 
         # Handle modified/removed transactions if present, writing separate CSVs for each kind
         modified = payload.get("modified")
@@ -241,7 +260,6 @@ def get_transactions(
                 account=account,
                 timestamp=timestamp,
                 kind="modified",
-                cursor=payload.get("cursor"),
             )
             modified_path.parent.mkdir(parents=True, exist_ok=True)
             modified_frame.to_csv(modified_path, index=False)
@@ -258,7 +276,6 @@ def get_transactions(
                 account=account,
                 timestamp=timestamp,
                 kind="removed",
-                cursor=payload.get("cursor"),
             )
             removed_path.parent.mkdir(parents=True, exist_ok=True)
             removed_frame.to_csv(removed_path, index=False)
