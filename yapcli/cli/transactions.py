@@ -63,6 +63,7 @@ def get_transactions_for_institution(
     *,
     institution_id: str,
     account_id: Optional[str] = None,
+    cursor: Optional[str] = None,
     secrets_dir: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """Initialize PlaidBackend from secrets and return /transactions response dict."""
@@ -71,6 +72,8 @@ def get_transactions_for_institution(
         institution_id=institution_id, secrets_dir=secrets_dir
     )
     backend = PlaidBackend(access_token=access_token, item_id=item_id)
+    if cursor is not None:
+        return backend.get_transactions(account_id=account_id, cursor=cursor)
     return backend.get_transactions(account_id=account_id)
 
 
@@ -148,10 +151,32 @@ def get_transactions(
         file_okay=False,
         dir_okay=True,
     ),
+    cursor: Optional[str] = typer.Option(
+        None,
+        "--cursor",
+        help=(
+            "Start the Plaid transactions/sync from this cursor. Only valid when you pass exactly one account_id argument."
+        ),
+    ),
 ) -> None:
     """Fetch transactions for one or more accounts and write CSV(s)."""
 
     secrets_path = secrets_dir or default_secrets_dir()
+
+    ids_list = [value for value in (ids or []) if value.strip() != ""]
+    if cursor is not None:
+        if all_accounts:
+            raise typer.BadParameter(
+                "--cursor is only valid when passing exactly one account_id argument."
+            )
+        if len(ids_list) != 1:
+            raise typer.BadParameter(
+                "--cursor is only valid when passing exactly one account_id argument."
+            )
+        if re.fullmatch(r"ins_\d+", ids_list[0]) is not None:
+            raise typer.BadParameter(
+                "--cursor is only valid when passing an account_id, not an institution id."
+            )
 
     selected_accounts = resolve_target_accounts(
         ids=ids,
@@ -171,6 +196,7 @@ def get_transactions(
             payload = get_transactions_for_institution(
                 institution_id=account.institution_id,
                 account_id=account.account_id,
+                cursor=cursor,
                 secrets_dir=secrets_path,
             )
         except (FileNotFoundError, ValueError) as exc:

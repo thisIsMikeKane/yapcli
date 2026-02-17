@@ -259,8 +259,13 @@ class PlaidBackend:
         except plaid.ApiException as exc:
             return json.loads(exc.body)
 
-    def get_transactions(self, *, account_id: Optional[str] = None) -> Dict[str, Any]:
-        cursor = ""
+    def get_transactions(
+        self,
+        *,
+        account_id: Optional[str] = None,
+        cursor: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        cursor = cursor or ""
         added: List[Dict[str, Any]] = []
         modified: List[Dict[str, Any]] = []
         removed: List[Dict[str, Any]] = []
