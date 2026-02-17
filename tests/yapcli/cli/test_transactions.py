@@ -38,6 +38,7 @@ def test_transactions_without_institution_prompts_and_writes_csv(
                 "accounts": [
                     {
                         "account_id": f"acct-{self.access_token}",
+                        "type": "depository",
                         "name": "Checking",
                         "subtype": "checking",
                         "mask": "0000",
@@ -126,6 +127,7 @@ def test_transactions_with_account_ids_writes_csv_without_prompt(
                 "accounts": [
                     {
                         "account_id": f"acct-{self.access_token}",
+                        "type": "depository",
                         "name": "Checking",
                         "subtype": "checking",
                         "mask": "0000",
@@ -212,6 +214,7 @@ def test_transactions_with_institution_ids_all_accounts_skips_prompt(
                 "accounts": [
                     {
                         "account_id": f"acct-{self.access_token}",
+                        "type": "depository",
                         "name": "Checking",
                         "subtype": "checking",
                         "mask": "0000",
@@ -299,6 +302,7 @@ def test_transactions_all_accounts_without_ids_processes_everything(
                 "accounts": [
                     {
                         "account_id": f"acct-{self.access_token}",
+                        "type": "depository",
                         "name": "Checking",
                         "subtype": "checking",
                         "mask": "0000",

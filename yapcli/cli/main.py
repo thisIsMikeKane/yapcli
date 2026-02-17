@@ -11,6 +11,8 @@ from rich.console import Console
 
 from yapcli import __version__
 from yapcli.cli.balances import app as balances_app
+from yapcli.cli.holdings import app as holdings_app
+from yapcli.cli.investment_transactions import app as investment_transactions_app
 from yapcli.cli.link import app as link_app
 from yapcli.cli.transactions import app as transactions_app
 from yapcli.logging import configure_logging
@@ -64,6 +66,8 @@ app = typer.Typer(
 )
 app.add_typer(link_app)
 app.add_typer(balances_app)
+app.add_typer(holdings_app)
+app.add_typer(investment_transactions_app)
 app.add_typer(transactions_app)
 
 
@@ -78,6 +82,16 @@ def _version_callback(value: bool) -> None:
 @app.callback()
 def main_callback(
     ctx: typer.Context,
+    production: bool = typer.Option(
+        False,
+        "--production",
+        help="Force PLAID_ENV=production for this command.",
+    ),
+    sandbox: bool = typer.Option(
+        False,
+        "--sandbox",
+        help="Force PLAID_ENV=sandbox for this command.",
+    ),
     version: bool = typer.Option(
         False,
         "--version",
@@ -88,6 +102,14 @@ def main_callback(
     ),
 ) -> None:
     """Handle global CLI options before dispatching to sub-commands."""
+
+    if production and sandbox:
+        raise typer.BadParameter("Pass only one of --production or --sandbox")
+
+    if production:
+        os.environ["PLAID_ENV"] = "production"
+    elif sandbox:
+        os.environ["PLAID_ENV"] = "sandbox"
 
     prefix = ctx.invoked_subcommand or "cli"
     _configure_cli_logging(prefix)

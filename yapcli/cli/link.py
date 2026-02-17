@@ -87,6 +87,7 @@ LOG_DIR = _get_default_log_dir()
 DEFAULT_BACKEND_PORT = 8000
 DEFAULT_FRONTEND_PORT = 3000
 POLL_INTERVAL_SECONDS = 2.0
+STARTED_AT_TOLERANCE_SECONDS = 1.0
 
 
 @dataclass
@@ -95,10 +96,18 @@ class ManagedProcess:
     log_handle: IO[str]
 
 
-def start_backend(port: int, secrets_dir: Path, log_path: Path) -> ManagedProcess:
+def start_backend(
+    port: int,
+    secrets_dir: Path,
+    log_path: Path,
+    *,
+    products: Optional[str] = None,
+) -> ManagedProcess:
     env = os.environ.copy()
     env["PORT"] = str(port)
     env["PLAID_SECRETS_DIR"] = str(secrets_dir)
+    if products is not None and products.strip() != "":
+        env["PLAID_PRODUCTS"] = products
 
     log_file = log_path.open("w")
     try:
@@ -230,7 +239,12 @@ def discover_credentials(
         except FileNotFoundError:
             continue
 
-        if access_updated < started_at or item_updated < started_at:
+        # Some filesystems have coarse mtime resolution (e.g. 1s). If we compare
+        # strictly against a high-resolution started_at, we can miss files that
+        # were written shortly after started_at but recorded with an earlier-
+        #rounded mtime.
+        cutoff = started_at - STARTED_AT_TOLERANCE_SECONDS
+        if access_updated < cutoff or item_updated < cutoff:
             continue
 
         updated = max(access_updated, item_updated)
@@ -313,6 +327,15 @@ def link(
         help="Automatically open the frontend in your browser.",
         show_default=True,
     ),
+    products: Optional[str] = typer.Option(
+        None,
+        "--products",
+        help=(
+            "Comma-separated Plaid products to request during Link."
+            "Defaults to PLAID_PRODUCTS env var or 'transactions' if not set. "
+            "Example: --products=transactions,investments"
+        ),
+    ),
 ) -> None:
     """
     Launch Plaid Link locally and wait for user to complete the flow returning an item_id and access_token.
@@ -345,7 +368,12 @@ def link(
             secrets_path,
         )
         console.print("[cyan]Starting Flask backend...[/]")
-        backend_proc = start_backend(backend_port, secrets_path, backend_log_path)
+        backend_proc = start_backend(
+            backend_port,
+            secrets_path,
+            backend_log_path,
+            products=products,
+        )
         console.print(
             f"[green]Backend running[/] on http://127.0.0.1:{backend_port}/api (log: {backend_log_path})"
         )

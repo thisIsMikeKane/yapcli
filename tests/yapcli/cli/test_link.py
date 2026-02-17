@@ -99,3 +99,36 @@ def test_terminate_process_stops_running_process(tmp_path: Path) -> None:
         if managed.process.poll() is None:
             managed.process.kill()
         log_handle.close()
+
+
+def test_start_backend_passes_products_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    secrets_dir = tmp_path / "secrets"
+    secrets_dir.mkdir()
+    log_path = tmp_path / "backend.log"
+
+    captured_env = {}
+
+    class FakeProc:
+        pid = 123
+
+        def poll(self):
+            return None
+
+    def fake_popen(cmd, cwd, env, stdout, stderr, start_new_session):
+        nonlocal captured_env
+        captured_env = dict(env)
+        return FakeProc()
+
+    monkeypatch.setattr(link.subprocess, "Popen", fake_popen)
+
+    managed = link.start_backend(
+        port=8000,
+        secrets_dir=secrets_dir,
+        log_path=log_path,
+        products="transactions,investments",
+    )
+
+    try:
+        assert captured_env.get("PLAID_PRODUCTS") == "transactions,investments"
+    finally:
+        managed.log_handle.close()

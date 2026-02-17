@@ -5,9 +5,13 @@ A CLI for exporting Plaid API requests to plain text for importing into accounti
 ## Features
 
 - Exports the following Plaid API requests to plain text
-  - [`transactions`](https://plaid.com/docs/api/products/transactions/)
-  - [`investments`](https://plaid.com/docs/api/products/investments/)
-  - [`liabilities`](https://plaid.com/docs/api/products/liabilities/)
+  - [Plaid `transactions`](https://plaid.com/docs/api/products/transactions/)
+    - `yapcli balances`
+    - `yapcli transactions`
+  - [Plaid `investments`](https://plaid.com/docs/api/products/investments/)
+    - `yapcli holdings`
+    - `yapcli investment_transactions`
+  - [ ] [Plaid `liabilities`](https://plaid.com/docs/api/products/liabilities/)
 - Supports financial institutions that require OAuth authentication with Plaid
 
 ## Prerequisites
