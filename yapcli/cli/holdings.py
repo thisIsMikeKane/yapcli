@@ -46,7 +46,8 @@ def _payload_to_dataframe(
         rows = [
             cast_row
             for cast_row in holdings_list
-            if isinstance(cast_row, dict) and cast_row.get("account_id") == account.account_id
+            if isinstance(cast_row, dict)
+            and cast_row.get("account_id") == account.account_id
         ]
         frame = pd.json_normalize(rows)
     else:
@@ -123,9 +124,11 @@ def get_holdings(
     for account in selected_accounts:
         if account.institution_id not in payload_by_institution:
             try:
-                payload_by_institution[account.institution_id] = get_holdings_for_institution(
-                    institution_id=account.institution_id,
-                    secrets_dir=secrets_path,
+                payload_by_institution[account.institution_id] = (
+                    get_holdings_for_institution(
+                        institution_id=account.institution_id,
+                        secrets_dir=secrets_path,
+                    )
                 )
             except (FileNotFoundError, ValueError) as exc:
                 payload_by_institution[account.institution_id] = {"error": str(exc)}
@@ -139,6 +142,8 @@ def get_holdings(
 
         inst_component = safe_filename_component(account.institution_id)
         account_component = safe_filename_component(account.mask or account.account_id)
-        out_path = holdings_out_dir / f"{inst_component}_{account_component}_{timestamp}.csv"
+        out_path = (
+            holdings_out_dir / f"{inst_component}_{account_component}_{timestamp}.csv"
+        )
         frame.to_csv(out_path, index=False)
         typer.echo(str(out_path))

@@ -242,7 +242,7 @@ def discover_credentials(
         # Some filesystems have coarse mtime resolution (e.g. 1s). If we compare
         # strictly against a high-resolution started_at, we can miss files that
         # were written shortly after started_at but recorded with an earlier-
-        #rounded mtime.
+        # rounded mtime.
         cutoff = started_at - STARTED_AT_TOLERANCE_SECONDS
         if access_updated < cutoff or item_updated < cutoff:
             continue

@@ -140,12 +140,18 @@ class PlaidBackend:
         if self.access_token and self.item_id:
             try:
                 item_payload = self.get_item(include_institution=False)
-                item = item_payload.get("item") if isinstance(item_payload, dict) else None
-                consented_raw = item.get("consented_products") if isinstance(item, dict) else None
+                item = (
+                    item_payload.get("item") if isinstance(item_payload, dict) else None
+                )
+                consented_raw = (
+                    item.get("consented_products") if isinstance(item, dict) else None
+                )
                 if isinstance(consented_raw, list):
                     consented = [p for p in consented_raw if isinstance(p, str) and p]
                     if consented:
-                        requested = [p.strip() for p in self.plaid_products if p.strip()]
+                        requested = [
+                            p.strip() for p in self.plaid_products if p.strip()
+                        ]
                         filtered = [p for p in requested if p in consented]
                         # Prefer the intersection; if empty, fall back to the consented list.
                         self.plaid_products = filtered or consented

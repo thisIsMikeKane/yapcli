@@ -13,7 +13,9 @@ from yapcli.utils import safe_filename_component, timestamp_for_filename
 app = typer.Typer(help="Fetch investment transactions for one or more accounts.")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_INVESTMENT_TRANSACTIONS_OUTPUT_DIR = PROJECT_ROOT / "data" / "investment_transactions"
+DEFAULT_INVESTMENT_TRANSACTIONS_OUTPUT_DIR = (
+    PROJECT_ROOT / "data" / "investment_transactions"
+)
 
 
 def get_investments_transactions_for_institution(
@@ -36,7 +38,9 @@ def _payload_to_dataframe(
     institution_id: str,
     account: DiscoveredAccount,
 ) -> pd.DataFrame:
-    inner = payload.get("investments_transactions") if isinstance(payload, dict) else None
+    inner = (
+        payload.get("investments_transactions") if isinstance(payload, dict) else None
+    )
     txns_list: Any = None
     if isinstance(inner, dict):
         txns_list = inner.get("investment_transactions")
@@ -46,7 +50,8 @@ def _payload_to_dataframe(
         rows = [
             cast_row
             for cast_row in txns_list
-            if isinstance(cast_row, dict) and cast_row.get("account_id") == account.account_id
+            if isinstance(cast_row, dict)
+            and cast_row.get("account_id") == account.account_id
         ]
         frame = pd.json_normalize(rows)
     else:
