@@ -8,12 +8,11 @@ import typer
 from yapcli.accounts import DiscoveredAccount, resolve_target_accounts
 from yapcli.secrets import default_secrets_dir, load_credentials
 from yapcli.server import PlaidBackend
-from yapcli.utils import safe_filename_component, timestamp_for_filename
+from yapcli.utils import default_data_dir, safe_filename_component, timestamp_for_filename
 
 app = typer.Typer(help="Fetch investment holdings for one or more accounts.")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_HOLDINGS_OUTPUT_DIR = PROJECT_ROOT / "data" / "holdings"
 
 
 def get_holdings_for_institution(
@@ -114,7 +113,7 @@ def get_holdings(
         allowed_account_types={"depository", "investment"},
     )
 
-    holdings_out_dir = out_dir or DEFAULT_HOLDINGS_OUTPUT_DIR
+    holdings_out_dir = out_dir or (default_data_dir() / "holdings")
     holdings_out_dir.mkdir(parents=True, exist_ok=True)
 
     timestamp = timestamp_for_filename()

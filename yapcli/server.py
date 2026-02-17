@@ -103,10 +103,13 @@ class PlaidBackend:
         self.plaid_products = self._env.get("PLAID_PRODUCTS", "transactions").split(",")
         self.plaid_country_codes = self._env.get("PLAID_COUNTRY_CODES", "US").split(",")
 
+        default_secrets_dir = Path(__file__).resolve().parents[1] / "secrets"
+        if self.plaid_env == "sandbox":
+            default_secrets_dir = Path(__file__).resolve().parents[1] / "sandbox" / "secrets"
         self.secrets_dir = Path(
             self._env.get(
                 "PLAID_SECRETS_DIR",
-                str(Path(__file__).resolve().parents[1] / "secrets"),
+                str(default_secrets_dir),
             )
         )
 
@@ -129,6 +132,8 @@ class PlaidBackend:
         )
         api_client = plaid.ApiClient(configuration)
         self.client = plaid_api.PlaidApi(api_client)
+
+        self._request_timeout_seconds = self._resolve_request_timeout_seconds()
 
         # We store the access_token in memory - in production, store it in a secure
         # persistent data store.
@@ -161,6 +166,29 @@ class PlaidBackend:
 
         self.app = Flask(__name__)
         self._register_routes(self.app)
+
+    def _resolve_request_timeout_seconds(self) -> Optional[float]:
+        raw = self._env.get("YAPCLI_PLAID_TIMEOUT_SECONDS")
+        if raw is None or str(raw).strip() == "":
+            return 10.0
+
+        try:
+            seconds = float(str(raw).strip())
+        except ValueError:
+            logger.warning(
+                "Invalid YAPCLI_PLAID_TIMEOUT_SECONDS={!r}; expected number of seconds; disabling timeout",
+                raw,
+            )
+            return None
+
+        if seconds <= 0:
+            return None
+        return seconds
+
+    def _timeout_kwargs(self) -> Dict[str, Any]:
+        if self._request_timeout_seconds is None:
+            return {}
+        return {"_request_timeout": self._request_timeout_seconds}
 
     def _register_routes(self, app: Flask) -> None:
         @app.route("/api/info", methods=["POST"])
@@ -223,7 +251,7 @@ class PlaidBackend:
             if self.plaid_redirect_uri is not None:
                 link_request["redirect_uri"] = self.plaid_redirect_uri
 
-            response = self.client.link_token_create(link_request)
+            response = self.client.link_token_create(link_request, **self._timeout_kwargs())
             return response.to_dict()
         except plaid.ApiException as exc:
             logger.exception("Plaid link_token_create failed")
@@ -232,7 +260,9 @@ class PlaidBackend:
     def exchange_public_token(self, public_token: str) -> Dict[str, Any]:
         try:
             exchange_request = ItemPublicTokenExchangeRequest(public_token=public_token)
-            exchange_response = self.client.item_public_token_exchange(exchange_request)
+            exchange_response = self.client.item_public_token_exchange(
+                exchange_request, **self._timeout_kwargs()
+            )
 
             self.access_token = exchange_response["access_token"]
             self.item_id = exchange_response["item_id"]
@@ -240,7 +270,8 @@ class PlaidBackend:
             institution_id = None
             try:
                 item_response = self.client.item_get(
-                    ItemGetRequest(access_token=self.access_token)
+                    ItemGetRequest(access_token=self.access_token),
+                    **self._timeout_kwargs(),
                 )
                 item_payload = item_response.to_dict()
                 institution_id = item_payload.get("item", {}).get("institution_id")
@@ -270,6 +301,8 @@ class PlaidBackend:
         modified: List[Dict[str, Any]] = []
         removed: List[Dict[str, Any]] = []
         has_more = True
+        empty_next_cursor_retries = 0
+        max_empty_next_cursor_retries = 2
         logger.debug(
             "transactions_sync start: account_id={} access_token_set={} initial_cursor={!r}",
             account_id,
@@ -297,7 +330,9 @@ class PlaidBackend:
                     cursor=cursor,
                     options=options,
                 )
-                response = self.client.transactions_sync(sync_request).to_dict()
+                response = self.client.transactions_sync(
+                    sync_request, **self._timeout_kwargs()
+                ).to_dict()
                 logger.debug(
                     "transactions_sync page: next_cursor={!r} has_more={} page_counts(added={}, modified={}, removed={})",
                     response.get("next_cursor"),
@@ -306,18 +341,49 @@ class PlaidBackend:
                     len(response.get("modified", []) or []),
                     len(response.get("removed", []) or []),
                 )
-                cursor = response["next_cursor"]
-                if cursor == "":
+                
+                has_more = response["has_more"]
+                next_cursor = response["next_cursor"]
+                if next_cursor == "":
+                    if empty_next_cursor_retries >= max_empty_next_cursor_retries:
+                        logger.warning(
+                            "transactions_sync next_cursor empty after {} retries; stopping to avoid hanging (account_id={} has_more={} current_cursor={!r})",
+                            empty_next_cursor_retries,
+                            account_id,
+                            response.get("has_more"),
+                            cursor,
+                        )
+                        return {
+                            "error": {
+                                "status_code": None,
+                                "display_message": (
+                                    "Plaid transactions/sync returned an empty next_cursor repeatedly; "
+                                    "stopping to avoid hanging. Try again later or increase logging."
+                                ),
+                                "error_code": "EMPTY_NEXT_CURSOR",
+                                "error_type": "YAPCLI_ERROR",
+                            },
+                            "transactions": sorted(added, key=lambda t: t.get("date", "")),
+                            "modified": modified,
+                            "removed": removed,
+                            "cursor": cursor,
+                        }
+
+                    empty_next_cursor_retries += 1
                     logger.debug(
-                        "transactions_sync next_cursor empty; sleeping 2s then retrying (has_more currently={})",
+                        "transactions_sync next_cursor empty; sleeping 2s then retrying (attempt {}/{}; has_more currently={})",
+                        empty_next_cursor_retries,
+                        max_empty_next_cursor_retries,
                         response.get("has_more"),
                     )
                     time.sleep(2)
                     continue
+
+                cursor = next_cursor
+                empty_next_cursor_retries = 0
                 added.extend(response["added"])
                 modified.extend(response["modified"])
                 removed.extend(response["removed"])
-                has_more = response["has_more"]
                 self.pretty_print_response(response)
 
             logger.debug(
@@ -351,7 +417,9 @@ class PlaidBackend:
     def get_balance(self) -> Dict[str, Any]:
         try:
             balance_request = AccountsBalanceGetRequest(access_token=self.access_token)
-            balance_response = self.client.accounts_balance_get(balance_request)
+            balance_response = self.client.accounts_balance_get(
+                balance_request, **self._timeout_kwargs()
+            )
             self.pretty_print_response(balance_response.to_dict())
             return balance_response.to_dict()
         except plaid.ApiException as exc:
@@ -360,7 +428,7 @@ class PlaidBackend:
     def get_accounts(self) -> Dict[str, Any]:
         try:
             accounts_request = AccountsGetRequest(access_token=self.access_token)
-            response = self.client.accounts_get(accounts_request)
+            response = self.client.accounts_get(accounts_request, **self._timeout_kwargs())
             self.pretty_print_response(response.to_dict())
             return response.to_dict()
         except plaid.ApiException as exc:
@@ -371,7 +439,9 @@ class PlaidBackend:
             holdings_request = InvestmentsHoldingsGetRequest(
                 access_token=self.access_token
             )
-            response = self.client.investments_holdings_get(holdings_request)
+            response = self.client.investments_holdings_get(
+                holdings_request, **self._timeout_kwargs()
+            )
             self.pretty_print_response(response.to_dict())
             return {"error": None, "holdings": response.to_dict()}
         except plaid.ApiException as exc:
@@ -388,7 +458,9 @@ class PlaidBackend:
                 end_date=end_date.date(),
                 options=options,
             )
-            response = self.client.investments_transactions_get(investments_request)
+            response = self.client.investments_transactions_get(
+                investments_request, **self._timeout_kwargs()
+            )
             self.pretty_print_response(response.to_dict())
             return {"error": None, "investments_transactions": response.to_dict()}
         except plaid.ApiException as exc:
@@ -397,7 +469,7 @@ class PlaidBackend:
     def get_item(self, *, include_institution: bool = True) -> Dict[str, Any]:
         try:
             item_request = ItemGetRequest(access_token=self.access_token)
-            item_response = self.client.item_get(item_request)
+            item_response = self.client.item_get(item_request, **self._timeout_kwargs())
 
             item_payload = item_response.to_dict()
             item = item_payload.get("item")
@@ -414,7 +486,8 @@ class PlaidBackend:
                     )
                     try:
                         institution_response = self.client.institutions_get_by_id(
-                            institution_request
+                            institution_request,
+                            **self._timeout_kwargs(),
                         )
                         institution = institution_response.to_dict().get("institution")
                     except plaid.ApiException:

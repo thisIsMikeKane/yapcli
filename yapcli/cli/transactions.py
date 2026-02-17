@@ -11,12 +11,11 @@ import typer
 from yapcli.accounts import DiscoveredAccount, resolve_target_accounts
 from yapcli.secrets import default_secrets_dir, load_credentials
 from yapcli.server import PlaidBackend
-from yapcli.utils import safe_filename_component, timestamp_for_filename
+from yapcli.utils import default_data_dir, safe_filename_component, timestamp_for_filename
 
 app = typer.Typer(help="Fetch transactions for a linked institution.")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_TRANSACTIONS_OUTPUT_DIR = PROJECT_ROOT / "data" / "transactions"
 
 
 _META_FILENAME_RE = re.compile(r"(?P<ts>\d{8}T\d{6}Z)_meta\.json$")
@@ -254,7 +253,7 @@ def get_transactions(
         allowed_account_types={"depository", "credit", "loan", "other"},
     )
 
-    transactions_out_dir = out_dir or DEFAULT_TRANSACTIONS_OUTPUT_DIR
+    transactions_out_dir = out_dir or (default_data_dir() / "transactions")
     transactions_out_dir.mkdir(parents=True, exist_ok=True)
 
     timestamp = timestamp_for_filename()
@@ -277,6 +276,30 @@ def get_transactions(
             )
         except (FileNotFoundError, ValueError) as exc:
             payload = {"error": str(exc)}
+
+        payload_error = payload.get("error")
+        if payload_error is not None:
+            message = None
+            if isinstance(payload_error, dict):
+                error_code = payload_error.get("error_code")
+                display_message = payload_error.get("display_message")
+                if isinstance(error_code, str) and error_code.strip() != "":
+                    message = f"{error_code}: {display_message}" if display_message else error_code
+                elif isinstance(display_message, str) and display_message.strip() != "":
+                    message = display_message
+            elif isinstance(payload_error, str) and payload_error.strip() != "":
+                message = payload_error.strip()
+
+            if message:
+                typer.echo(
+                    f"WARNING: transactions sync returned an error for account_id={account.account_id}: {message}",
+                    err=True,
+                )
+            else:
+                typer.echo(
+                    f"WARNING: transactions sync returned an error for account_id={account.account_id}",
+                    err=True,
+                )
 
         # Format and save added transactions
         frame = _payload_to_dataframe(
@@ -301,11 +324,16 @@ def get_transactions(
             timestamp=timestamp,
         )
         meta_path.parent.mkdir(parents=True, exist_ok=True)
+
+        error_value = payload.get("error")
+        if error_value is not None and not isinstance(error_value, (dict, str)):
+            error_value = str(error_value)
         meta_path.write_text(
             json.dumps(
                 {
                     "account_id": account.account_id,
                     "cursor": payload.get("cursor"),
+                    "error": error_value,
                 },
                 indent=2,
                 sort_keys=True,
