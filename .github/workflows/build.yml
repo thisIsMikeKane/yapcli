@@ -51,31 +51,31 @@ jobs:
     - name: Run tox
       run: tox run-parallel --parallel auto --parallel-no-spinner --skip-pkg-install
 
-    - name: Build XML coverage
-      if: always()
-      run: |
-        python -Im pip install --quiet "coverage[toml]"
-        # Merge every .cover/.* created by tox in the `.cover/` directory into one .coverage
-        python -Im coverage combine .cover
-        # Produce the XML file Codecov will look for
-        python -Im coverage xml -i \
-            -o .cover/coverage.${{ matrix.python-version }}.xml
+    # - name: Build XML coverage
+    #   if: always()
+    #   run: |
+    #     python -Im pip install --quiet "coverage[toml]"
+    #     # Merge every .cover/.* created by tox in the `.cover/` directory into one .coverage
+    #     python -Im coverage combine .cover
+    #     # Produce the XML file Codecov will look for
+    #     python -Im coverage xml -i \
+    #         -o .cover/coverage.${{ matrix.python-version }}.xml
 
-    - name: Upload coverage to Codecov
-      if: always()
-      uses: codecov/codecov-action@v5
-      with:
-        files: .cover/coverage.${{ matrix.python-version }}.xml
-        flags: py${{ matrix.python-version }}
-        token: ${{ secrets.CODECOV_TOKEN }}
+    # - name: Upload coverage to Codecov
+    #   if: always()
+    #   uses: codecov/codecov-action@v5
+    #   with:
+    #     files: .cover/coverage.${{ matrix.python-version }}.xml
+    #     flags: py${{ matrix.python-version }}
+    #     token: ${{ secrets.CODECOV_TOKEN }}
 
-    - name: Upload test results to Codecov
-      if: always()
-      uses: codecov/test-results-action@v1
-      with:
-        # pick up every junit.*.xml written by tox in the `.junit/` directory
-        files: .junit/junit.*.xml
-        token: ${{ secrets.CODECOV_TOKEN }}
+    # - name: Upload test results to Codecov
+    #   if: always()
+    #   uses: codecov/test-results-action@v1
+    #   with:
+    #     # pick up every junit.*.xml written by tox in the `.junit/` directory
+    #     files: .junit/junit.*.xml
+    #     token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: Build package
       run: |
