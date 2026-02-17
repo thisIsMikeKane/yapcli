@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import re
 
 import pandas as pd
 import typer
@@ -15,6 +16,48 @@ app = typer.Typer(help="Fetch transactions for a linked institution.")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_TRANSACTIONS_OUTPUT_DIR = PROJECT_ROOT / "data" / "transactions"
+
+
+def build_transactions_csv_path(
+    *,
+    out_dir: Path,
+    account: DiscoveredAccount,
+    timestamp: str,
+    cursor: Optional[str],
+    kind: Optional[str] = None,
+) -> Path:
+    inst_component = safe_filename_component(
+        str(account.institution_id) + "_" + str(account.bank_name)
+    )
+    account_component = safe_filename_component(
+        str(account.account_id) + "_" + (account.mask or "0000") + "_" + str(account.name)
+    )
+
+    cursor_component = ""
+    if isinstance(cursor, str) and cursor.strip() != "":
+        cursor_component = cursor.strip()
+        if len(cursor_component) > 128:
+            raise ValueError(f"Expected cursor length up to 128, got {len(cursor_component)}")
+        if re.fullmatch(r"[A-Za-z0-9=]+", cursor_component) is None:
+            raise ValueError(
+                "Cursor contains unexpected characters; expected only A-Za-z0-9._=-"
+                + f"Got cursor: {cursor_component}"
+            )
+
+    kind_component = ""
+    if isinstance(kind, str) and kind.strip() != "":
+        kind_component = safe_filename_component(kind.strip())
+
+    filename = f"{timestamp}.csv"
+    if kind_component:
+        filename = f"{timestamp}_{kind_component}.csv"
+    if cursor_component:
+        if kind_component:
+            filename = f"{timestamp}_{kind_component}_{cursor_component}.csv"
+        else:
+            filename = f"{timestamp}_{cursor_component}.csv"
+
+    return out_dir / inst_component / account_component / filename
 
 def get_transactions_for_institution(
     *,
@@ -37,7 +80,7 @@ def _payload_to_dataframe(
     institution_id: str,
     account: Optional[DiscoveredAccount] = None,
 ) -> pd.DataFrame:
-    transactions = payload.get("latest_transactions")
+    transactions = payload.get("transactions")
     if isinstance(transactions, list):
         frame = pd.json_normalize(transactions)
         if "institution_id" not in frame.columns:
@@ -122,6 +165,8 @@ def get_transactions(
 
     timestamp = timestamp_for_filename()
     for account in selected_accounts:
+
+        # Get transactions
         try:
             payload = get_transactions_for_institution(
                 institution_id=account.institution_id,
@@ -131,16 +176,64 @@ def get_transactions(
         except (FileNotFoundError, ValueError) as exc:
             payload = {"error": str(exc)}
 
+        # Format and save added transactions
         frame = _payload_to_dataframe(
             payload=payload,
             institution_id=account.institution_id,
             account=account,
         )
-        inst_component = safe_filename_component(account.institution_id)
-        account_component = safe_filename_component(account.mask or account.account_id)
-        out_path = (
-            transactions_out_dir
-            / f"{inst_component}_{account_component}_{timestamp}.csv"
+
+        out_path = build_transactions_csv_path(
+            out_dir=transactions_out_dir,
+            account=account,
+            timestamp=timestamp,
+            cursor=payload.get("cursor"),
         )
+        out_path.parent.mkdir(parents=True, exist_ok=True)
         frame.to_csv(out_path, index=False)
         typer.echo(str(out_path))
+
+        # Handle modified/removed transactions if present, writing separate CSVs for each kind
+        modified = payload.get("modified")
+        removed = payload.get("removed")
+        modified_count = len(modified) if isinstance(modified, list) else 0
+        removed_count = len(removed) if isinstance(removed, list) else 0
+        if modified_count or removed_count:
+            typer.echo(
+                f"WARNING: Plaid sync returned modified={modified_count} removed={removed_count} for account_id={account.account_id}. "
+                + "Writing separate CSVs for modified/removed."
+            )
+
+        if isinstance(modified, list) and modified:
+            modified_frame = _payload_to_dataframe(
+                payload={"transactions": modified},
+                institution_id=account.institution_id,
+                account=account,
+            )
+            modified_path = build_transactions_csv_path(
+                out_dir=transactions_out_dir,
+                account=account,
+                timestamp=timestamp,
+                kind="modified",
+                cursor=payload.get("cursor"),
+            )
+            modified_path.parent.mkdir(parents=True, exist_ok=True)
+            modified_frame.to_csv(modified_path, index=False)
+            typer.echo(str(modified_path))
+
+        if isinstance(removed, list) and removed:
+            removed_frame = _payload_to_dataframe(
+                payload={"transactions": removed},
+                institution_id=account.institution_id,
+                account=account,
+            )
+            removed_path = build_transactions_csv_path(
+                out_dir=transactions_out_dir,
+                account=account,
+                timestamp=timestamp,
+                kind="removed",
+                cursor=payload.get("cursor"),
+            )
+            removed_path.parent.mkdir(parents=True, exist_ok=True)
+            removed_frame.to_csv(removed_path, index=False)
+            typer.echo(str(removed_path))

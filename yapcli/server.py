@@ -10,7 +10,7 @@ import datetime as dt
 import json
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify
@@ -24,6 +24,7 @@ from plaid.model.item_public_token_exchange_request import (
 from plaid.model.link_token_create_request import LinkTokenCreateRequest
 from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
 from plaid.model.transactions_sync_request import TransactionsSyncRequest
+from plaid.model.transactions_sync_request_options import TransactionsSyncRequestOptions
 from plaid.model.investments_transactions_get_request_options import (
     InvestmentsTransactionsGetRequestOptions,
 )
@@ -260,19 +261,52 @@ class PlaidBackend:
 
     def get_transactions(self, *, account_id: Optional[str] = None) -> Dict[str, Any]:
         cursor = ""
-        added = []
-        modified = []
-        removed = []
+        added: List[Dict[str, Any]] = []
+        modified: List[Dict[str, Any]] = []
+        removed: List[Dict[str, Any]] = []
         has_more = True
+        logger.debug(
+            "transactions_sync start: account_id={} access_token_set={} initial_cursor={!r}",
+            account_id,
+            self.access_token is not None,
+            cursor,
+        )
         try:
             while has_more:
+                logger.debug(
+                    "transactions_sync loop: cursor={!r} has_more={} totals(added={}, modified={}, removed={})",
+                    cursor,
+                    has_more,
+                    len(added),
+                    len(modified),
+                    len(removed),
+                )
+                options = None
+                if account_id:
+                    # Prefer server-side filtering so we don't fetch the entire item's
+                    # transactions only to filter locally.
+                    options = TransactionsSyncRequestOptions(account_id=account_id)
+
                 sync_request = TransactionsSyncRequest(
                     access_token=self.access_token,
                     cursor=cursor,
+                    options=options,
                 )
                 response = self.client.transactions_sync(sync_request).to_dict()
+                logger.debug(
+                    "transactions_sync page: next_cursor={!r} has_more={} page_counts(added={}, modified={}, removed={})",
+                    response.get("next_cursor"),
+                    response.get("has_more"),
+                    len(response.get("added", []) or []),
+                    len(response.get("modified", []) or []),
+                    len(response.get("removed", []) or []),
+                )
                 cursor = response["next_cursor"]
                 if cursor == "":
+                    logger.debug(
+                        "transactions_sync next_cursor empty; sleeping 2s then retrying (has_more currently={})",
+                        response.get("has_more"),
+                    )
                     time.sleep(2)
                     continue
                 added.extend(response["added"])
@@ -281,12 +315,31 @@ class PlaidBackend:
                 has_more = response["has_more"]
                 self.pretty_print_response(response)
 
-            filtered = added
-            if account_id:
-                filtered = [t for t in added if t.get("account_id") == account_id]
+            logger.debug(
+                "transactions_sync done: final_cursor={!r} totals(added={}, modified={}, removed={})",
+                cursor,
+                len(added),
+                len(modified),
+                len(removed),
+            )
+            logger.info(
+                "Transactions sync complete: added={} modified={} removed={}",
+                len(added),
+                len(modified),
+                len(removed),
+            )
 
-            latest_transactions = sorted(filtered, key=lambda t: t["date"])[-8:]
-            return {"latest_transactions": latest_transactions}
+            transactions = sorted(added, key=lambda t: t["date"])
+            logger.debug(
+                "transactions_sync returning transactions_count={}",
+                len(transactions),
+            )
+            return {
+                "transactions": transactions,
+                "modified": modified,
+                "removed": removed,
+                "cursor": cursor,
+            }
         except plaid.ApiException as exc:
             return self.format_error(exc)
 

@@ -52,7 +52,7 @@ def test_production_flag_overrides_plaid_env(monkeypatch: pytest.MonkeyPatch, tm
 
         def get_transactions(self, *, account_id: str | None = None) -> Dict[str, Any]:
             return {
-                "latest_transactions": [
+                "transactions": [
                     {
                         "transaction_id": f"txn-{self.access_token}",
                         "account_id": account_id,
@@ -137,7 +137,7 @@ def test_sandbox_flag_overrides_existing_plaid_env(monkeypatch: pytest.MonkeyPat
 
         def get_transactions(self, *, account_id: str | None = None) -> Dict[str, Any]:
             return {
-                "latest_transactions": [
+                "transactions": [
                     {
                         "transaction_id": f"txn-{self.access_token}",
                         "account_id": account_id,
