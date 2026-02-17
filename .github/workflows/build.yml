@@ -124,4 +124,5 @@ jobs:
 
     - name: Verify frontend files installed
       run: |
+        cd /tmp
         python -c "import yapcli; from pathlib import Path; pkg_dir = Path(yapcli.__file__).parent; frontend = pkg_dir / 'frontend' / 'build' / 'index.html'; assert frontend.exists(), f'Frontend not found at {frontend}'"
