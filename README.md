@@ -11,12 +11,16 @@ A CLI for exporting Plaid API requests to plain text for importing into accounti
   - [Plaid `investments`](https://plaid.com/docs/api/products/investments/)
     - `yapcli holdings`
     - `yapcli investment_transactions`
-  - [ ] [Plaid `liabilities`](https://plaid.com/docs/api/products/liabilities/)
 - Supports financial institutions that require OAuth authentication with Plaid
 
 ## Prerequisites
 
+### Plaid developer credentials
+
 [ ] TODO explain how to get Plaid developer credentials
+
+### Dependencies
+
 [ ] TODO explain how to install pipx
 
 ## Quick start
