@@ -23,13 +23,17 @@ def frontend_build(project_root: Path) -> Path:
     if not build_script.exists():
         pytest.skip("scripts/build_frontend.py not found")
 
-    # Run the build script
-    result = subprocess.run(
-        [sys.executable, str(build_script)],
-        cwd=project_root,
-        capture_output=True,
-        text=True,
-    )
+    # Run the build script with timeout
+    try:
+        result = subprocess.run(
+            [sys.executable, str(build_script)],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=180,  # 3 minute timeout for frontend build
+        )
+    except subprocess.TimeoutExpired:
+        pytest.skip("Frontend build timed out after 180 seconds")
 
     if result.returncode != 0:
         pytest.skip(f"Frontend build failed: {result.stderr}")
@@ -95,13 +99,17 @@ class TestPackageBuild:
                 if item.is_file():
                     item.unlink()
 
-        # Build source distribution
-        result = subprocess.run(
-            [sys.executable, "-m", "build", "--sdist"],
-            cwd=project_root,
-            capture_output=True,
-            text=True,
-        )
+        # Build source distribution with timeout
+        try:
+            result = subprocess.run(
+                [sys.executable, "-m", "build", "--sdist"],
+                cwd=project_root,
+                capture_output=True,
+                text=True,
+                timeout=300,  # 5 minute timeout
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail("Source distribution build timed out after 300 seconds")
 
         if result.returncode != 0:
             pytest.fail(f"Source distribution build failed:\n{result.stderr}")
@@ -138,13 +146,17 @@ class TestPackageBuild:
                 if item.is_file() and item.suffix == ".whl":
                     item.unlink()
 
-        # Build wheel
-        result = subprocess.run(
-            [sys.executable, "-m", "build", "--wheel"],
-            cwd=project_root,
-            capture_output=True,
-            text=True,
-        )
+        # Build wheel with timeout
+        try:
+            result = subprocess.run(
+                [sys.executable, "-m", "build", "--wheel"],
+                cwd=project_root,
+                capture_output=True,
+                text=True,
+                timeout=300,  # 5 minute timeout
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail("Wheel build timed out after 300 seconds")
 
         if result.returncode != 0:
             pytest.fail(f"Wheel build failed:\n{result.stderr}")
@@ -188,12 +200,13 @@ class TestInstalledPackage:
             pip_path = venv_dir / "bin" / "pip"
             python_path = venv_dir / "bin" / "python"
 
-        # Build the package first
+        # Build the package first with timeout
         result = subprocess.run(
             [sys.executable, "-m", "build", "--wheel"],
             cwd=project_root,
             capture_output=True,
             text=True,
+            timeout=300,  # 5 minute timeout for build
         )
 
         if result.returncode != 0:
@@ -207,11 +220,12 @@ class TestInstalledPackage:
 
         wheel_path = wheels[-1]  # Use the most recent wheel
 
-        # Install the wheel
+        # Install the wheel with timeout
         result = subprocess.run(
             [str(pip_path), "install", str(wheel_path)],
             capture_output=True,
             text=True,
+            timeout=300,  # 5 minute timeout for install
         )
 
         if result.returncode != 0:

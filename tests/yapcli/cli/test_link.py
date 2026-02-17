@@ -114,9 +114,9 @@ def test_start_backend_passes_products_env(tmp_path: Path, monkeypatch: pytest.M
         def poll(self):
             return None
 
-    def fake_popen(cmd, cwd, env, stdout, stderr, start_new_session):
+    def fake_popen(*args, **kwargs):
         nonlocal captured_env
-        captured_env = dict(env)
+        captured_env = dict(kwargs.get("env", {}))
         return FakeProc()
 
     monkeypatch.setattr(link.subprocess, "Popen", fake_popen)
