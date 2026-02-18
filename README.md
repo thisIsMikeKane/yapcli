@@ -45,6 +45,7 @@ The CLI entry point is defined in `pyproject.toml` under `[project.scripts]` as 
 - **[madhat2r/plaid2text](https://github.com/madhat2r/plaid2text)**
 - **[build-your-own-mint](https://github.com/yyx990803/build-your-own-mint)**
 - **[plaid-sync](https://github.com/mbafford/plaid-sync)** Has an html page to launch the link, but likely outdated.
+- **[plaid-cli](https://github.com/landakram/plaid-cli)** Writen in GO. Last updated 5 years ago
 
 ### Differences
 
