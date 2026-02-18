@@ -4,11 +4,14 @@ import os
 from pathlib import Path
 from typing import Optional, Tuple
 
+from yapcli.utils import default_config_dir
+
 SECRETS_DIR_ENV_VAR = "PLAID_SECRETS_DIR"
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_SECRETS_DIR = PROJECT_ROOT / "secrets"
-DEFAULT_SANDBOX_SECRETS_DIR = PROJECT_ROOT / "sandbox" / "secrets"
+
+_CONFIG_DIR = default_config_dir()
+DEFAULT_SECRETS_DIR = _CONFIG_DIR / "secrets"
+DEFAULT_SANDBOX_SECRETS_DIR = _CONFIG_DIR / "sandbox" / "secrets"
 
 
 def default_secrets_dir() -> Path:

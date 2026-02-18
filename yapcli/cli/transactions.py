@@ -19,8 +19,6 @@ from yapcli.utils import (
 
 app = typer.Typer(help="Fetch transactions for a linked institution.")
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
 
 _META_FILENAME_RE = re.compile(r"(?P<ts>\d{8}T\d{6}Z)_meta\.json$")
 

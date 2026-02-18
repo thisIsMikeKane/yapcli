@@ -16,8 +16,6 @@ from yapcli.utils import (
 
 app = typer.Typer(help="Fetch investment transactions for one or more accounts.")
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
 
 def get_investments_transactions_for_institution(
     *,

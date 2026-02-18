@@ -44,10 +44,11 @@ yapcli link
 ```
 
 This will:
+
 1. Start a local Flask backend server
 2. Serve the React frontend (Plaid Link UI)
 3. Open your browser to complete the Plaid Link flow
-4. Save the credentials to `~/.yapcli/secrets/`
+4. Save credentials to the default secrets directory (see Default paths below)
 
 ### Export transactions
 
@@ -60,6 +61,28 @@ yapcli transactions --help
 ```bash
 yapcli balances --help
 ```
+
+## Default paths
+
+`yapcli` resolves default directories as follows (unless you override them):
+
+- **Development checkout** (repo contains `pyproject.toml`):
+  - Config root: `<repo-root>/`
+  - Secrets: `<repo-root>/secrets` (or `<repo-root>/sandbox/secrets` when `PLAID_ENV=sandbox`)
+  - Logs: `<repo-root>/logs`
+- **Installed package** (pip/pipx):
+  - Config/log dirs use platform-native locations via `platformdirs` (for app `yapcli`)
+  - Secrets: `<platform-config-dir>/secrets` (or `<platform-config-dir>/sandbox/secrets` when `PLAID_ENV=sandbox`)
+- **Data output**:
+  - Defaults to `./data` under your current terminal working directory
+  - Command-specific subdirectories are created under `./data` (for example `transactions`, `balances`, etc.)
+
+### Overrides
+
+- Pass `--secrets-dir` on commands that support it to explicitly choose secrets location
+- Pass `--out-dir` on export commands to explicitly choose output location
+- Set `PLAID_SECRETS_DIR` to override secrets location globally
+- Set `YAPCLI_LOG_DIR` to override log directory globally
 
 ## Development environment
 

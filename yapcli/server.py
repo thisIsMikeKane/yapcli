@@ -37,6 +37,7 @@ from plaid.model.investments_holdings_get_request import InvestmentsHoldingsGetR
 from plaid.model.item_get_request import ItemGetRequest
 from plaid.model.institutions_get_by_id_request import InstitutionsGetByIdRequest
 from plaid.api import plaid_api
+from yapcli.secrets import DEFAULT_SANDBOX_SECRETS_DIR, DEFAULT_SECRETS_DIR
 
 load_dotenv()
 
@@ -103,15 +104,15 @@ class PlaidBackend:
         self.plaid_products = self._env.get("PLAID_PRODUCTS", "transactions").split(",")
         self.plaid_country_codes = self._env.get("PLAID_COUNTRY_CODES", "US").split(",")
 
-        default_secrets_dir = Path(__file__).resolve().parents[1] / "secrets"
-        if self.plaid_env == "sandbox":
-            default_secrets_dir = (
-                Path(__file__).resolve().parents[1] / "sandbox" / "secrets"
-            )
+        default_secrets_path = (
+            DEFAULT_SANDBOX_SECRETS_DIR
+            if self.plaid_env == "sandbox"
+            else DEFAULT_SECRETS_DIR
+        )
         self.secrets_dir = Path(
             self._env.get(
                 "PLAID_SECRETS_DIR",
-                str(default_secrets_dir),
+                str(default_secrets_path),
             )
         )
 

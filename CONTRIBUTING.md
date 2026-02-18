@@ -2,6 +2,26 @@
 
 Thanks for helping improve Plaid CLI! This project uses UV for dependency management. Follow the workflow below to mirror the maintainers' setup.
 
+## Default path behavior
+
+`yapcli` centralizes path resolution in `yapcli/utils.py`.
+
+- **In a development checkout** (repository with `pyproject.toml`):
+  - Config root is the repository root
+  - Default logs are written to `<repo-root>/logs`
+  - Default secrets are read/written under `<repo-root>/secrets` (or `<repo-root>/sandbox/secrets` when `PLAID_ENV=sandbox`)
+- **As an installed package** (pip/pipx):
+  - Config and log directories are chosen via `platformdirs` for app name `yapcli`
+  - Default secrets are under the resolved config dir (`secrets` or `sandbox/secrets`)
+- **Data exports** default to `./data` relative to the current terminal working directory.
+
+Overrides take precedence:
+
+- CLI option `--secrets-dir`
+- CLI option `--out-dir`
+- Environment variable `PLAID_SECRETS_DIR`
+- Environment variable `YAPCLI_LOG_DIR`
+
 ## Development environment (VS Code + uv)
 
 ### Prerequisites
@@ -129,6 +149,7 @@ python scripts/prepare_package.py --upload
 ### Package Contents
 
 The built package includes:
+
 - Python CLI application
 - Bundled React frontend (Plaid Link UI) at `yapcli/frontend/build/`
 - All Python dependencies

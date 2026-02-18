@@ -16,6 +16,7 @@ dependencies = [
   "itsdangerous>=2.2.0",
   "loguru>=0.7.3",
   "pandas>=2.2.0",
+  "platformdirs>=4.3.0",
   "plaid_python>=38.0.0",
   "python-dotenv>=1.2.1",
   "questionary>=2.1.1",

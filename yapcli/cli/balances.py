@@ -17,8 +17,6 @@ from yapcli.utils import default_data_dir, timestamp_for_filename
 
 app = typer.Typer(help="Fetch account/balance information for a linked institution.")
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
 
 def _payload_to_dataframe(
     *, payload: Dict[str, Any], institution_id: str

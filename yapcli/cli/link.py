@@ -17,6 +17,7 @@ from rich.console import Console
 
 from yapcli.logging import build_log_path
 from yapcli.secrets import default_secrets_dir
+from yapcli.utils import default_log_dir
 
 console = Console()
 app = typer.Typer(help="Run Plaid Link locally and capture the resulting tokens.")
@@ -46,45 +47,8 @@ def _get_frontend_dir() -> Path:
     )
 
 
-def _get_default_secrets_dir() -> Path:
-    """Get the default secrets directory."""
-    env_secrets_dir = os.getenv("YAPCLI_SECRETS_DIR")
-    if env_secrets_dir:
-        return Path(env_secrets_dir)
-
-    # Try to use project root if running from source
-    try:
-        project_root = Path(__file__).resolve().parents[2]
-        if (project_root / "pyproject.toml").exists():
-            return project_root / "secrets"
-    except (IndexError, OSError):
-        pass
-
-    # Fall back to user home directory for installed packages
-    return Path.home() / ".yapcli" / "secrets"
-
-
-def _get_default_log_dir() -> Path:
-    """Get the default log directory."""
-    env_log_dir = os.getenv("YAPCLI_LOG_DIR")
-    if env_log_dir:
-        return Path(env_log_dir)
-
-    # Try to use project root if running from source
-    try:
-        project_root = Path(__file__).resolve().parents[2]
-        if (project_root / "pyproject.toml").exists():
-            return project_root / "logs"
-    except (IndexError, OSError):
-        pass
-
-    # Fall back to user home directory for installed packages
-    return Path.home() / ".yapcli" / "logs"
-
-
 FRONTEND_DIR = _get_frontend_dir()
-DEFAULT_SECRETS_DIR = _get_default_secrets_dir()
-LOG_DIR = _get_default_log_dir()
+LOG_DIR = default_log_dir()
 DEFAULT_BACKEND_PORT = 8000
 DEFAULT_FRONTEND_PORT = 3000
 POLL_INTERVAL_SECONDS = 2.0

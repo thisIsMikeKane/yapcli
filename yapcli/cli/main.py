@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import datetime as dt
 import os
-from pathlib import Path
 
 import typer
 from rich.console import Console
@@ -16,31 +15,12 @@ from yapcli.cli.investment_transactions import app as investment_transactions_ap
 from yapcli.cli.link import app as link_app
 from yapcli.cli.transactions import app as transactions_app
 from yapcli.logging import configure_logging
+from yapcli.utils import default_log_dir
 
 console = Console()
 
 
-def _get_default_log_dir() -> Path:
-    """Get the default log directory, using user home for installed packages."""
-    env_log_dir = os.getenv("YAPCLI_LOG_DIR")
-    if env_log_dir:
-        return Path(env_log_dir)
-
-    # Try to use project root if running from source
-    try:
-        project_root = Path(__file__).resolve().parents[2]
-        dev_logs = project_root / "logs"
-        # Check if we're in a development environment
-        if (project_root / "pyproject.toml").exists():
-            return dev_logs
-    except (IndexError, OSError):
-        pass
-
-    # Fall back to user home directory for installed packages
-    return Path.home() / ".yapcli" / "logs"
-
-
-LOG_DIR = _get_default_log_dir()
+LOG_DIR = default_log_dir()
 
 
 app = typer.Typer(

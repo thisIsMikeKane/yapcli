@@ -16,8 +16,6 @@ from yapcli.utils import (
 
 app = typer.Typer(help="Fetch investment holdings for one or more accounts.")
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
 
 def get_holdings_for_institution(
     *,

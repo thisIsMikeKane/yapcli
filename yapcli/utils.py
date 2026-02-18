@@ -3,37 +3,91 @@ from __future__ import annotations
 import datetime as dt
 import os
 import re
+import site
+import sysconfig
 from pathlib import Path
 
-from yapcli.institutions import (  # re-exported for backward compatibility
-    DiscoveredInstitution,
-    discover_institutions,
-    prompt_for_institutions,
-)
-
-__all__ = [
-    "DiscoveredInstitution",
-    "discover_institutions",
-    "prompt_for_institutions",
-    "safe_filename_component",
-    "default_data_dir",
-    "timestamp_for_filename",
-]
-
+from platformdirs import PlatformDirs
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
+_APP_NAME = "yapcli"
+_PLATFORM_DIRS = PlatformDirs(appname=_APP_NAME)
+
+
+def _is_under(path: Path, parent: Path) -> bool:
+    try:
+        path.relative_to(parent)
+        return True
+    except ValueError:
+        return False
+
+
+def _installed_lib_roots() -> list[Path]:
+    roots: list[Path] = []
+
+    for key in ("purelib", "platlib"):
+        value = sysconfig.get_paths().get(key)
+        if value:
+            roots.append(Path(value).resolve())
+
+    try:
+        for value in site.getsitepackages():
+            roots.append(Path(value).resolve())
+    except Exception:
+        pass
+
+    try:
+        user_site = site.getusersitepackages()
+        if user_site:
+            roots.append(Path(user_site).resolve())
+    except Exception:
+        pass
+
+    deduped: list[Path] = []
+    seen: set[str] = set()
+    for root in roots:
+        key = str(root)
+        if key not in seen:
+            seen.add(key)
+            deduped.append(root)
+    return deduped
+
+
+def _is_installed_package() -> bool:
+    package_dir = _PROJECT_ROOT.resolve()
+    return any(_is_under(package_dir, root) for root in _installed_lib_roots())
+
+
+def _is_development_checkout() -> bool:
+    if _is_installed_package():
+        return False
+    return (_PROJECT_ROOT / "pyproject.toml").exists()
+
+
+def default_config_dir() -> Path:
+    if _is_development_checkout():
+        return _PROJECT_ROOT
+    return Path(_PLATFORM_DIRS.user_config_path)
+
+
+def default_log_dir() -> Path:
+    override = os.getenv("YAPCLI_LOG_DIR")
+    if override:
+        return Path(override)
+
+    if _is_development_checkout():
+        return _PROJECT_ROOT / "logs"
+
+    return Path(_PLATFORM_DIRS.user_log_path)
 
 
 def default_data_dir() -> Path:
     """Default data directory.
 
-    Uses `sandbox/data` when PLAID_ENV=sandbox, otherwise `data`.
+    Uses the current working directory's `data` folder.
     """
 
-    plaid_env = os.getenv("PLAID_ENV")
-    if plaid_env == "sandbox":
-        return _PROJECT_ROOT / "sandbox" / "data"
-    return _PROJECT_ROOT / "data"
+    return Path.cwd() / "data"
 
 
 def timestamp_for_filename() -> str:
