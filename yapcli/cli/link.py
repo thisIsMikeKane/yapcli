@@ -28,6 +28,31 @@ DEFAULT_BACKEND_PORT = 8000
 DEFAULT_FRONTEND_PORT = 3000
 POLL_INTERVAL_SECONDS = 2.0
 STARTED_AT_TOLERANCE_SECONDS = 1.0
+_ALLOWED_PRODUCTS = {"transactions", "investments"}
+
+
+def _validate_products(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+
+    raw = value.strip()
+    if raw == "":
+        return None
+
+    parts = [p.strip().lower() for p in raw.split(",")]
+    parts = [p for p in parts if p]
+    if not parts:
+        return None
+
+    invalid = sorted({p for p in parts if p not in _ALLOWED_PRODUCTS})
+    if invalid:
+        allowed = ", ".join(sorted(_ALLOWED_PRODUCTS))
+        bad = ", ".join(invalid)
+        raise typer.BadParameter(
+            f"Invalid --products value(s): {bad}. Allowed values: {allowed}"
+        )
+
+    return ",".join(parts)
 
 
 @dataclass
@@ -271,6 +296,7 @@ def link(
     products: Optional[str] = typer.Option(
         None,
         "--products",
+        callback=_validate_products,
         help=(
             "Comma-separated Plaid products to request during Link."
             "Defaults to PLAID_PRODUCTS env var or 'transactions' if not set. "
