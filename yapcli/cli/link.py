@@ -16,6 +16,7 @@ from loguru import logger
 from rich.console import Console
 
 from yapcli.logging import build_log_path
+from yapcli.secrets import default_secrets_dir
 
 console = Console()
 app = typer.Typer(help="Run Plaid Link locally and capture the resulting tokens.")
@@ -344,7 +345,7 @@ def link(
     started_dt = dt.datetime.fromtimestamp(started_at)
     # Logging is configured once in the main Typer app callback.
 
-    secrets_path = secrets_dir or DEFAULT_SECRETS_DIR
+    secrets_path = secrets_dir or default_secrets_dir()
     backend_log_path = build_log_path(
         log_dir=LOG_DIR,
         prefix="backend",

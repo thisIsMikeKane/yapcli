@@ -11,15 +11,18 @@ A CLI for exporting Plaid API requests to plain text for importing into accounti
   - [Plaid `investments`](https://plaid.com/docs/api/products/investments/)
     - `yapcli holdings`
     - `yapcli investment_transactions`
-  - [ ] [Plaid `liabilities`](https://plaid.com/docs/api/products/liabilities/)
 - Supports financial institutions that require OAuth authentication with Plaid
 
 ## Prerequisites
 
-- Python 3.12+
-- [pipx](https://pipx.pypa.io/) for installation
+### Plaid developer credentials
 
 [ ] TODO explain how to get Plaid developer credentials
+
+### Dependencies
+
+- **Python 3.12**: Minimum necessary version of Python to run `yapcli`
+- **[pipx](https://pipx.pypa.io/stable/#install-pipx)**: Streamlines installation and commandline use
 
 ## Quick start
 

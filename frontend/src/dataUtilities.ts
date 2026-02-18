@@ -599,9 +599,9 @@ export const transformStatementsData = (data: {json: StatementsListResponse}) =>
 };
 
 export const transformTransactionsData = (data: {
-  latest_transactions: Transaction[];
+  transactions: Transaction[];
 }): Array<DataItem> => {
-  return data.latest_transactions!.map((t) => {
+  return data.transactions!.map((t) => {
     const item: DataItem = {
       name: t.name!,
       amount: formatCurrency(t.amount!, t.iso_currency_code),

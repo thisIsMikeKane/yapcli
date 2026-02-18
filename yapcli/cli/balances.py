@@ -13,12 +13,11 @@ from yapcli.institutions import (
     discover_institutions,
     prompt_for_institutions,
 )
-from yapcli.utils import timestamp_for_filename
+from yapcli.utils import default_data_dir, timestamp_for_filename
 
 app = typer.Typer(help="Fetch account/balance information for a linked institution.")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_BALANCES_OUTPUT_DIR = PROJECT_ROOT / "data" / "balances"
 
 
 def _payload_to_dataframe(
@@ -93,7 +92,7 @@ def get_balances(
     else:
         selected_institutions = [institution_id]
 
-    balances_out_dir = out_dir or DEFAULT_BALANCES_OUTPUT_DIR
+    balances_out_dir = out_dir or (default_data_dir() / "balances")
     balances_out_dir.mkdir(parents=True, exist_ok=True)
 
     timestamp = timestamp_for_filename()

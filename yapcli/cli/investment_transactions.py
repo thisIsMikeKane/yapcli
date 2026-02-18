@@ -8,14 +8,15 @@ import typer
 from yapcli.accounts import DiscoveredAccount, resolve_target_accounts
 from yapcli.secrets import default_secrets_dir, load_credentials
 from yapcli.server import PlaidBackend
-from yapcli.utils import safe_filename_component, timestamp_for_filename
+from yapcli.utils import (
+    default_data_dir,
+    safe_filename_component,
+    timestamp_for_filename,
+)
 
 app = typer.Typer(help="Fetch investment transactions for one or more accounts.")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_INVESTMENT_TRANSACTIONS_OUTPUT_DIR = (
-    PROJECT_ROOT / "data" / "investment_transactions"
-)
 
 
 def get_investments_transactions_for_institution(
@@ -119,7 +120,7 @@ def get_investment_transactions(
         allowed_account_types={"depository", "investment"},
     )
 
-    out_base = out_dir or DEFAULT_INVESTMENT_TRANSACTIONS_OUTPUT_DIR
+    out_base = out_dir or (default_data_dir() / "investment_transactions")
     out_base.mkdir(parents=True, exist_ok=True)
 
     timestamp = timestamp_for_filename()

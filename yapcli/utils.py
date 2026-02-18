@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import datetime as dt
+import os
 import re
+from pathlib import Path
 
 from yapcli.institutions import (  # re-exported for backward compatibility
     DiscoveredInstitution,
@@ -14,8 +16,24 @@ __all__ = [
     "discover_institutions",
     "prompt_for_institutions",
     "safe_filename_component",
+    "default_data_dir",
     "timestamp_for_filename",
 ]
+
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+def default_data_dir() -> Path:
+    """Default data directory.
+
+    Uses `sandbox/data` when PLAID_ENV=sandbox, otherwise `data`.
+    """
+
+    plaid_env = os.getenv("PLAID_ENV")
+    if plaid_env == "sandbox":
+        return _PROJECT_ROOT / "sandbox" / "data"
+    return _PROJECT_ROOT / "data"
 
 
 def timestamp_for_filename() -> str:
