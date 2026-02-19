@@ -2,6 +2,18 @@
 
 Thanks for helping improve Plaid CLI! This project uses UV for dependency management. Follow the workflow below to mirror the maintainers' setup.
 
+## Helpful references
+
+- [Plaid docs](https://plaid.com/docs/)
+  - [Institution coverage](https://plaid.com/docs/institutions/)
+  - [Plaid API docs](https://plaid.com/docs/api/)
+- [Plaid dashboard](https://dashboard.plaid.com) (requires developer login)
+  - [Instition status](https://dashboard.plaid.com/activity/status)
+  - [Logs](https://dashboard.plaid.com/developers/logs)
+  - [Item debugger](https://dashboard.plaid.com/activity/debugger)
+  - [OAuth production status](https://dashboard.plaid.com/activity/status/oauth-institutions)
+- **[Plaid quickstart](https://github.com/plaid/quickstart)** was copied as the foundation for `yapcli/server.py` and `frontend/`.
+
 ## Default path behavior
 
 `yapcli` centralizes path resolution in `yapcli/utils.py`.
