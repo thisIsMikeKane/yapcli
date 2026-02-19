@@ -167,3 +167,29 @@ def test_link_defaults_to_sandbox_secrets_dir(monkeypatch: pytest.MonkeyPatch) -
     assert result.exit_code == 0
 
     assert seen["secrets_dir"] == link.PROJECT_ROOT / "sandbox" / "secrets"
+
+
+def test_link_rejects_invalid_products(monkeypatch: pytest.MonkeyPatch) -> None:
+    runner = CliRunner()
+
+    # Ensure we fail before trying to start subprocesses.
+    monkeypatch.setattr(link, "start_backend", lambda *args, **kwargs: None)
+    monkeypatch.setattr(link, "start_frontend", lambda *args, **kwargs: None)
+    monkeypatch.setattr(link, "wait_for_credentials", lambda **kwargs: ("ins", "item", "access"))
+    monkeypatch.setattr(link, "terminate_process", lambda *args, **kwargs: None)
+
+    result = runner.invoke(
+        root_cli.app,
+        [
+            "--sandbox",
+            "link",
+            "--no-open-browser",
+            "--timeout",
+            "1",
+            "--products",
+            "transactions,liabilities",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "Invalid --products" in result.output
