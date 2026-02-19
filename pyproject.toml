@@ -48,6 +48,7 @@ typecheck = [
   "types-Flask>=1.1.6",
   # Packages with missing type hints
   "loguru>=0.7.3",
+  "platformdirs>=4.3.0",
   "python-dotenv>=1.2.1",
   "questionary>=2.1.1",
   "typer>=0.15.3",

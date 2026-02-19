@@ -111,6 +111,7 @@ def test_start_backend_passes_products_env(
     log_path = tmp_path / "backend.log"
 
     captured_env = {}
+    captured_cmd = []
 
     class FakeProc:
         pid = 123
@@ -120,6 +121,8 @@ def test_start_backend_passes_products_env(
 
     def fake_popen(*args, **kwargs):
         nonlocal captured_env
+        nonlocal captured_cmd
+        captured_cmd = list(args[0])
         captured_env = dict(kwargs.get("env", {}))
         return FakeProc()
 
@@ -134,6 +137,14 @@ def test_start_backend_passes_products_env(
 
     try:
         assert captured_env.get("PLAID_PRODUCTS") == "transactions,investments"
+        assert captured_cmd == [
+            link.sys.executable,
+            "-m",
+            "yapcli",
+            "serve",
+            "--port",
+            "8000",
+        ]
     finally:
         managed.log_handle.close()
 

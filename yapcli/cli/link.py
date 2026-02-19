@@ -77,7 +77,7 @@ def start_backend(
     log_file = log_path.open("w")
     try:
         process = subprocess.Popen(
-            [sys.executable, "-m", "yapcli.server"],
+            [sys.executable, "-m", "yapcli", "serve", "--port", str(port)],
             env=env,
             stdout=log_file,
             stderr=subprocess.STDOUT,

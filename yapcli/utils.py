@@ -81,6 +81,10 @@ def default_log_dir() -> Path:
     return Path(_PLATFORM_DIRS.user_log_path)
 
 
+def default_env_file_path() -> Path:
+    return default_config_dir() / ".env"
+
+
 def default_data_dir() -> Path:
     """Default data directory.
 

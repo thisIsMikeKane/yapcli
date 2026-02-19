@@ -12,7 +12,6 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 from loguru import logger
 import plaid
@@ -38,8 +37,6 @@ from plaid.model.item_get_request import ItemGetRequest
 from plaid.model.institutions_get_by_id_request import InstitutionsGetByIdRequest
 from plaid.api import plaid_api
 from yapcli.secrets import DEFAULT_SANDBOX_SECRETS_DIR, DEFAULT_SECRETS_DIR
-
-load_dotenv()
 
 
 def _empty_to_none(env: Dict[str, str], field: str) -> Optional[str]:
@@ -570,11 +567,3 @@ class PlaidBackend:
         except OSError as exc:
             logger.warning("Unable to write tokens to {}: {}", self.secrets_dir, exc)
 
-
-# Module-level Flask app for compatibility with `flask run` and `python -m yapcli.server`.
-backend = PlaidBackend()
-app = backend.app
-
-
-if __name__ == "__main__":
-    app.run(port=int(os.getenv("PORT", 8000)))

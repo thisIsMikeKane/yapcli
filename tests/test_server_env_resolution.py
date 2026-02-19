@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
+from yapcli import _load_default_dotenv
 from yapcli.server import _resolve_plaid_env_and_secret
 
 
@@ -61,3 +65,35 @@ def test_plaid_secret_takes_precedence_over_env_specific_secrets() -> None:
     plaid_env, plaid_secret = _resolve_plaid_env_and_secret(env)
     assert plaid_env == "sandbox"
     assert plaid_secret == "direct-secret"
+
+
+def test_load_default_dotenv_loads_values_from_default_env_file(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    env_path = tmp_path / ".env"
+    env_path.write_text("PLAID_CLIENT_ID=from-config\n")
+
+    monkeypatch.setattr("yapcli.default_env_file_path", lambda: env_path)
+    monkeypatch.delenv("PLAID_CLIENT_ID", raising=False)
+
+    loaded = _load_default_dotenv()
+
+    assert loaded is True
+    assert os.getenv("PLAID_CLIENT_ID") == "from-config"
+
+
+def test_load_default_dotenv_does_not_override_existing_environment_value(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    env_path = tmp_path / ".env"
+    env_path.write_text("PLAID_CLIENT_ID=from-config\n")
+
+    monkeypatch.setattr("yapcli.default_env_file_path", lambda: env_path)
+    monkeypatch.setenv("PLAID_CLIENT_ID", "already-set")
+
+    loaded = _load_default_dotenv()
+
+    assert loaded is True
+    assert os.getenv("PLAID_CLIENT_ID") == "already-set"

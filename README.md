@@ -35,6 +35,36 @@ yapcli --help
 
 ## Usage
 
+### Configure Plaid credentials
+
+Use the `config` commands to create and manage your `yapcli` `.env` file:
+
+```bash
+# Show the default .env path
+yapcli config path
+
+# Interactive setup (prompts for core values)
+yapcli config init
+
+# Set/update a single key
+yapcli config set PLAID_CLIENT_ID your_client_id
+yapcli config set PLAID_ENV sandbox
+```
+
+`yapcli` loads this default `.env` file on package import.
+
+Configuration precedence (highest to lowest):
+
+1. Command-line arguments/options
+2. Environment variables already set in your shell/session
+3. Values defined in the default `.env` file
+
+Examples:
+
+- `yapcli --production ...` overrides `PLAID_ENV` from both shell env and `.env`
+- Exporting `PLAID_ENV=sandbox` in your shell overrides `PLAID_ENV` in `.env`
+- `.env` values are used as defaults when neither CLI options nor shell env provide a value
+
 ### Link a Plaid account
 
 To link your financial institution and obtain credentials:
