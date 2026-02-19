@@ -566,4 +566,3 @@ class PlaidBackend:
             (self.secrets_dir / f"{identifier}_access_token").write_text(token or "")
         except OSError as exc:
             logger.warning("Unable to write tokens to {}: {}", self.secrets_dir, exc)
-
