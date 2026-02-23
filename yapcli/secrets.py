@@ -1,26 +1,11 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Optional, Tuple
 
-from yapcli.utils import default_config_dir
+from yapcli.utils import default_secrets_dir
 
 SECRETS_DIR_ENV_VAR = "PLAID_SECRETS_DIR"
-
-
-_CONFIG_DIR = default_config_dir()
-DEFAULT_SECRETS_DIR = _CONFIG_DIR / "secrets"
-DEFAULT_SANDBOX_SECRETS_DIR = _CONFIG_DIR / "sandbox" / "secrets"
-
-
-def default_secrets_dir() -> Path:
-    override = os.getenv(SECRETS_DIR_ENV_VAR)
-    if override:
-        return Path(override)
-    if os.getenv("PLAID_ENV") == "sandbox":
-        return DEFAULT_SANDBOX_SECRETS_DIR
-    return DEFAULT_SECRETS_DIR
 
 
 def read_secret_required(path: Path, *, label: str) -> str:

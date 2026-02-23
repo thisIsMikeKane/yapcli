@@ -9,10 +9,11 @@ import pandas as pd
 import typer
 
 from yapcli.accounts import DiscoveredAccount, resolve_target_accounts
-from yapcli.secrets import default_secrets_dir, load_credentials
+from yapcli.secrets import load_credentials
 from yapcli.server import PlaidBackend
 from yapcli.utils import (
-    default_data_dir,
+    default_output_dir,
+    default_secrets_dir,
     safe_filename_component,
     timestamp_for_filename,
 )
@@ -133,13 +134,10 @@ def get_transactions_for_institution(
     institution_id: str,
     account_id: Optional[str] = None,
     cursor: Optional[str] = None,
-    secrets_dir: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """Initialize PlaidBackend from secrets and return /transactions response dict."""
 
-    item_id, access_token = load_credentials(
-        institution_id=institution_id, secrets_dir=secrets_dir
-    )
+    item_id, access_token = load_credentials(institution_id=institution_id)
     backend = PlaidBackend(access_token=access_token, item_id=item_id)
     if isinstance(cursor, str) and cursor.strip() != "":
         return backend.get_transactions(account_id=account_id, cursor=cursor.strip())
@@ -199,15 +197,6 @@ def get_transactions(
             "If you pass account_ids, no prompt is shown."
         ),
     ),
-    secrets_dir: Optional[Path] = typer.Option(
-        None,
-        "--secrets-dir",
-        help="Directory containing *_access_token and *_item_id files.",
-        exists=True,
-        file_okay=False,
-        dir_okay=True,
-        readable=True,
-    ),
     all_accounts: bool = typer.Option(
         False,
         "--all-accounts",
@@ -217,7 +206,7 @@ def get_transactions(
     out_dir: Optional[Path] = typer.Option(
         None,
         "--out-dir",
-        help="Directory to write CSV files into (default: data/transactions).",
+        help="Directory to write CSV files into (default: <output>/transactions).",
         file_okay=False,
         dir_okay=True,
     ),
@@ -239,7 +228,7 @@ def get_transactions(
 ) -> None:
     """Fetch transactions for one or more accounts and write CSV(s)."""
 
-    secrets_path = secrets_dir or default_secrets_dir()
+    secrets_path = default_secrets_dir()
 
     ids_list = [value for value in (ids or []) if value.strip() != ""]
     if sync and cursor is not None:
@@ -265,7 +254,7 @@ def get_transactions(
         allowed_account_types={"depository", "credit", "loan", "other"},
     )
 
-    transactions_out_dir = out_dir or (default_data_dir() / "transactions")
+    transactions_out_dir = out_dir or (default_output_dir() / "transactions")
     transactions_out_dir.mkdir(parents=True, exist_ok=True)
 
     timestamp = timestamp_for_filename()
@@ -284,7 +273,6 @@ def get_transactions(
                 institution_id=account.institution_id,
                 account_id=account.account_id,
                 cursor=effective_cursor,
-                secrets_dir=secrets_path,
             )
         except (FileNotFoundError, ValueError) as exc:
             payload = {"error": str(exc)}

@@ -57,7 +57,15 @@ def test_config_init_writes_prompted_values(
 
     monkeypatch.setattr(config_cli, "default_env_file_path", lambda: env_path)
 
-    prompts = iter(["client-id", "sandbox", "super-secret"])
+    prompts = iter(
+        [
+            "client-id",
+            "sandbox",
+            "US,CA",
+            "sandbox-secret",
+            "production-secret",
+        ]
+    )
 
     def fake_prompt(*_args, **_kwargs):
         return next(prompts)
@@ -70,4 +78,6 @@ def test_config_init_writes_prompted_values(
     contents = env_path.read_text()
     assert "PLAID_CLIENT_ID=client-id" in contents
     assert "PLAID_ENV=sandbox" in contents
-    assert "PLAID_SECRET=super-secret" in contents
+    assert "PLAID_COUNTRY_CODES=US,CA" in contents
+    assert "PLAID_SANDBOX_SECRET=sandbox-secret" in contents
+    assert "PLAID_PRODUCTION_SECRET=production-secret" in contents

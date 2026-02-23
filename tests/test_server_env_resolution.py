@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from yapcli import _load_default_dotenv
+from yapcli.env import load_env_files
 from yapcli.server import _resolve_plaid_env_and_secret
 
 
@@ -67,33 +67,45 @@ def test_plaid_secret_takes_precedence_over_env_specific_secrets() -> None:
     assert plaid_secret == "direct-secret"
 
 
-def test_load_default_dotenv_loads_values_from_default_env_file(
+def test_load_env_files_applies_platform_then_cwd_without_overriding_shell_env(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
-    env_path = tmp_path / ".env"
-    env_path.write_text("PLAID_CLIENT_ID=from-config\n")
+    platform_env = tmp_path / "platform.env"
+    cwd_env = tmp_path / "cwd.env"
 
-    monkeypatch.setattr("yapcli.default_env_file_path", lambda: env_path)
+    platform_env.write_text("PLAID_CLIENT_ID=from-platform\nPLAID_COUNTRY_CODES=US\n")
+    cwd_env.write_text("PLAID_CLIENT_ID=from-cwd\n")
+
+    monkeypatch.setattr("yapcli.env.platform_env_file_path", lambda: platform_env)
+    monkeypatch.setattr("yapcli.env.cwd_env_file_path", lambda: cwd_env)
+
     monkeypatch.delenv("PLAID_CLIENT_ID", raising=False)
+    monkeypatch.delenv("PLAID_COUNTRY_CODES", raising=False)
 
-    loaded = _load_default_dotenv()
+    load_env_files()
 
-    assert loaded is True
-    assert os.getenv("PLAID_CLIENT_ID") == "from-config"
+    # CWD overrides platform
+    assert os.getenv("PLAID_CLIENT_ID") == "from-cwd"
+    # Platform-only key is still applied
+    assert os.getenv("PLAID_COUNTRY_CODES") == "US"
 
 
-def test_load_default_dotenv_does_not_override_existing_environment_value(
+def test_load_env_files_does_not_override_shell_environment_value(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
-    env_path = tmp_path / ".env"
-    env_path.write_text("PLAID_CLIENT_ID=from-config\n")
+    platform_env = tmp_path / "platform.env"
+    cwd_env = tmp_path / "cwd.env"
 
-    monkeypatch.setattr("yapcli.default_env_file_path", lambda: env_path)
+    platform_env.write_text("PLAID_CLIENT_ID=from-platform\n")
+    cwd_env.write_text("PLAID_CLIENT_ID=from-cwd\n")
+
+    monkeypatch.setattr("yapcli.env.platform_env_file_path", lambda: platform_env)
+    monkeypatch.setattr("yapcli.env.cwd_env_file_path", lambda: cwd_env)
+
     monkeypatch.setenv("PLAID_CLIENT_ID", "already-set")
 
-    loaded = _load_default_dotenv()
+    load_env_files()
 
-    assert loaded is True
     assert os.getenv("PLAID_CLIENT_ID") == "already-set"

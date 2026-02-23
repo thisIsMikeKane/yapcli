@@ -9,7 +9,6 @@ import os
 import datetime as dt
 import json
 import time
-from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from flask import Flask, request, jsonify
@@ -36,7 +35,9 @@ from plaid.model.investments_holdings_get_request import InvestmentsHoldingsGetR
 from plaid.model.item_get_request import ItemGetRequest
 from plaid.model.institutions_get_by_id_request import InstitutionsGetByIdRequest
 from plaid.api import plaid_api
-from yapcli.secrets import DEFAULT_SANDBOX_SECRETS_DIR, DEFAULT_SECRETS_DIR
+from yapcli.utils import default_secrets_dir
+
+DEFAULT_PLAID_REDIRECT_URI = ""
 
 
 def _empty_to_none(env: Dict[str, str], field: str) -> Optional[str]:
@@ -62,13 +63,7 @@ def _resolve_plaid_env_and_secret(env: Dict[str, str]) -> tuple[str, Optional[st
     sandbox_secret = _empty_to_none(env, "PLAID_SANDBOX_SECRET")
     production_secret = _empty_to_none(env, "PLAID_PRODUCTION_SECRET")
 
-    if explicit_env is not None:
-        plaid_env = explicit_env
-    else:
-        if sandbox_secret is not None and production_secret is not None:
-            plaid_env = "production"
-        else:
-            plaid_env = "sandbox"
+    plaid_env = explicit_env or "production"
 
     direct_secret = _empty_to_none(env, "PLAID_SECRET")
     if direct_secret is not None:
@@ -93,28 +88,21 @@ class PlaidBackend:
         env: Optional[Dict[str, str]] = None,
         access_token: Optional[str] = None,
         item_id: Optional[str] = None,
+        products: Optional[List[str]] = None,
     ) -> None:
         self._env: Dict[str, str] = dict(env) if env is not None else dict(os.environ)
 
         self.plaid_client_id = self._env.get("PLAID_CLIENT_ID")
         self.plaid_env, self.plaid_secret = _resolve_plaid_env_and_secret(self._env)
-        self.plaid_products = self._env.get("PLAID_PRODUCTS", "transactions").split(",")
-        self.plaid_country_codes = self._env.get("PLAID_COUNTRY_CODES", "US").split(",")
-
-        default_secrets_path = (
-            DEFAULT_SANDBOX_SECRETS_DIR
-            if self.plaid_env == "sandbox"
-            else DEFAULT_SECRETS_DIR
+        self.plaid_products = products or ["transactions"]
+        self.plaid_country_codes = self._env.get("PLAID_COUNTRY_CODES", "US,CA").split(
+            ","
         )
-        self.secrets_dir = Path(
-            self._env.get(
-                "PLAID_SECRETS_DIR",
-                str(default_secrets_path),
-            )
-        )
+        self.secrets_dir = default_secrets_dir(self._env)
 
         # Parameters used for the OAuth redirect Link flow.
-        self.plaid_redirect_uri = _empty_to_none(self._env, "PLAID_REDIRECT_URI")
+        # Redirect URIs are intentionally not configurable via environment variables.
+        self.plaid_redirect_uri = DEFAULT_PLAID_REDIRECT_URI
 
         host = plaid.Environment.Sandbox
         if self.plaid_env == "sandbox":
@@ -142,7 +130,7 @@ class PlaidBackend:
 
         # If we have an existing item context, prune requested products to match
         # item.consented_products. This avoids downstream failures when a user
-        # has PLAID_PRODUCTS configured more broadly than a given institution.
+        # requests products more broadly than a given institution.
         if self.access_token and self.item_id:
             try:
                 item_payload = self.get_item(include_institution=False)
@@ -164,7 +152,7 @@ class PlaidBackend:
             except Exception:
                 # Best-effort only; never block initialization.
                 logger.debug(
-                    "Unable to prune PLAID_PRODUCTS using item.consented_products",
+                    "Unable to prune requested products using item.consented_products",
                     exc_info=True,
                 )
 
@@ -254,7 +242,7 @@ class PlaidBackend:
                 user=LinkTokenCreateRequestUser(client_user_id=str(time.time())),
             )
 
-            if self.plaid_redirect_uri is not None:
+            if self.plaid_redirect_uri.strip() != "":
                 link_request["redirect_uri"] = self.plaid_redirect_uri
 
             response = self.client.link_token_create(

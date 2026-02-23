@@ -26,11 +26,11 @@ def test_backend_prunes_products_using_consented_products(
             "PLAID_CLIENT_ID": "client",
             "PLAID_SECRET": "secret",
             "PLAID_ENV": "sandbox",
-            "PLAID_PRODUCTS": "transactions,investments",
             "PLAID_COUNTRY_CODES": "US",
         },
         access_token="access",
         item_id="item",
+        products=["transactions", "investments"],
     )
 
     assert backend.plaid_products == ["transactions"]
@@ -55,11 +55,11 @@ def test_backend_falls_back_to_consented_when_intersection_empty(
             "PLAID_CLIENT_ID": "client",
             "PLAID_SECRET": "secret",
             "PLAID_ENV": "sandbox",
-            "PLAID_PRODUCTS": "transactions",
             "PLAID_COUNTRY_CODES": "US",
         },
         access_token="access",
         item_id="item",
+        products=["transactions"],
     )
 
     assert backend.plaid_products == ["investments"]

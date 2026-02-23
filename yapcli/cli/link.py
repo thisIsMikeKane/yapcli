@@ -16,8 +16,7 @@ from loguru import logger
 from rich.console import Console
 
 from yapcli.logging import build_log_path
-from yapcli.secrets import default_secrets_dir
-from yapcli.utils import default_log_dir
+from yapcli.utils import default_log_dir, default_secrets_dir
 
 console = Console()
 app = typer.Typer(help="Run Plaid Link locally and capture the resulting tokens.")
@@ -48,7 +47,6 @@ def _get_frontend_dir() -> Path:
 
 
 FRONTEND_DIR = _get_frontend_dir()
-LOG_DIR = default_log_dir()
 DEFAULT_BACKEND_PORT = 8000
 DEFAULT_FRONTEND_PORT = 3000
 POLL_INTERVAL_SECONDS = 2.0
@@ -96,13 +94,14 @@ def start_backend(
     env = os.environ.copy()
     env["PORT"] = str(port)
     env["PLAID_SECRETS_DIR"] = str(secrets_dir)
-    if products is not None and products.strip() != "":
-        env["PLAID_PRODUCTS"] = products
 
     log_file = log_path.open("w")
     try:
+        cmd = [sys.executable, "-m", "yapcli", "serve", "--port", str(port)]
+        if products is not None and products.strip() != "":
+            cmd.extend(["--products", products])
         process = subprocess.Popen(
-            [sys.executable, "-m", "yapcli", "serve", "--port", str(port)],
+            cmd,
             env=env,
             stdout=log_file,
             stderr=subprocess.STDOUT,
@@ -300,11 +299,6 @@ def link(
         "--serve-build",
         help="Serve the built frontend instead of running the dev server.",
     ),
-    secrets_dir: Optional[Path] = typer.Option(
-        None,
-        "--secrets-dir",
-        help="Directory where the backend writes item_id/access_token files.",
-    ),
     timeout: int = typer.Option(
         300,
         "--timeout",
@@ -323,7 +317,6 @@ def link(
         callback=_validate_products,
         help=(
             "Comma-separated Plaid products to request during Link."
-            "Defaults to PLAID_PRODUCTS env var or 'transactions' if not set. "
             "Example: --products=transactions,investments"
         ),
     ),
@@ -335,14 +328,15 @@ def link(
     started_dt = dt.datetime.fromtimestamp(started_at)
     # Logging is configured once in the main Typer app callback.
 
-    secrets_path = secrets_dir or default_secrets_dir()
+    secrets_path = default_secrets_dir()
+    log_dir = default_log_dir()
     backend_log_path = build_log_path(
-        log_dir=LOG_DIR,
+        log_dir=log_dir,
         prefix="backend",
         started_at=started_dt,
     )
     frontend_log_path = build_log_path(
-        log_dir=LOG_DIR,
+        log_dir=log_dir,
         prefix="frontend",
         started_at=started_dt,
     )

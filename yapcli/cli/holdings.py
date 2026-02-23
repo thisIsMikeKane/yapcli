@@ -6,10 +6,11 @@ import pandas as pd
 import typer
 
 from yapcli.accounts import DiscoveredAccount, resolve_target_accounts
-from yapcli.secrets import default_secrets_dir, load_credentials
+from yapcli.secrets import load_credentials
 from yapcli.server import PlaidBackend
 from yapcli.utils import (
-    default_data_dir,
+    default_output_dir,
+    default_secrets_dir,
     safe_filename_component,
     timestamp_for_filename,
 )
@@ -20,13 +21,10 @@ app = typer.Typer(help="Fetch investment holdings for one or more accounts.")
 def get_holdings_for_institution(
     *,
     institution_id: str,
-    secrets_dir: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """Initialize PlaidBackend from secrets and return /holdings response dict."""
 
-    item_id, access_token = load_credentials(
-        institution_id=institution_id, secrets_dir=secrets_dir
-    )
+    item_id, access_token = load_credentials(institution_id=institution_id)
     backend = PlaidBackend(access_token=access_token, item_id=item_id)
     return backend.get_holdings()
 
@@ -82,15 +80,6 @@ def get_holdings(
             "If you pass account_ids, no prompt is shown."
         ),
     ),
-    secrets_dir: Optional[Path] = typer.Option(
-        None,
-        "--secrets-dir",
-        help="Directory containing *_access_token and *_item_id files.",
-        exists=True,
-        file_okay=False,
-        dir_okay=True,
-        readable=True,
-    ),
     all_accounts: bool = typer.Option(
         False,
         "--all-accounts",
@@ -100,14 +89,14 @@ def get_holdings(
     out_dir: Optional[Path] = typer.Option(
         None,
         "--out-dir",
-        help="Directory to write CSV files into (default: data/holdings).",
+        help="Directory to write CSV files into (default: <output>/holdings).",
         file_okay=False,
         dir_okay=True,
     ),
 ) -> None:
     """Fetch holdings for one or more eligible accounts and write CSV(s)."""
 
-    secrets_path = secrets_dir or default_secrets_dir()
+    secrets_path = default_secrets_dir()
 
     selected_accounts = resolve_target_accounts(
         ids=ids,
@@ -116,7 +105,7 @@ def get_holdings(
         allowed_account_types={"depository", "investment"},
     )
 
-    holdings_out_dir = out_dir or (default_data_dir() / "holdings")
+    holdings_out_dir = out_dir or (default_output_dir() / "holdings")
     holdings_out_dir.mkdir(parents=True, exist_ok=True)
 
     timestamp = timestamp_for_filename()
@@ -128,7 +117,6 @@ def get_holdings(
                 payload_by_institution[account.institution_id] = (
                     get_holdings_for_institution(
                         institution_id=account.institution_id,
-                        secrets_dir=secrets_path,
                     )
                 )
             except (FileNotFoundError, ValueError) as exc:

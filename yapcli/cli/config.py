@@ -12,11 +12,12 @@ app = typer.Typer(help="Manage yapcli configuration values.")
 
 _DEFAULT_KEY_ORDER = [
     "PLAID_CLIENT_ID",
-    "PLAID_SECRET",
     "PLAID_ENV",
-    "PLAID_PRODUCTS",
+    "PLAID_SANDBOX_SECRET",
+    "PLAID_PRODUCTION_SECRET",
     "PLAID_COUNTRY_CODES",
-    "PLAID_REDIRECT_URI",
+    # Legacy override (takes precedence if set). Not prompted by `config init`.
+    "PLAID_SECRET",
 ]
 
 
@@ -73,26 +74,37 @@ def init_config(
         "PLAID_ENV",
         default=existing.get("PLAID_ENV", "sandbox"),
     ).strip()
+    country_codes = typer.prompt(
+        "PLAID_COUNTRY_CODES",
+        default=existing.get("PLAID_COUNTRY_CODES", "US,CA"),
+    ).strip()
 
     values = dict(existing)
     values["PLAID_CLIENT_ID"] = client_id
     values["PLAID_ENV"] = plaid_env
+    values["PLAID_COUNTRY_CODES"] = country_codes
 
-    update_secret = True
-    if existing.get("PLAID_SECRET"):
-        update_secret = typer.confirm(
-            "PLAID_SECRET already exists. Update it?",
-            default=False,
-        )
+    def upsert_secret(key: str) -> None:
+        update_secret = True
+        if existing.get(key):
+            update_secret = typer.confirm(
+                f"{key} already exists. Update it?",
+                default=False,
+            )
 
-    if update_secret:
-        values["PLAID_SECRET"] = typer.prompt(
-            "PLAID_SECRET",
-            default=existing.get("PLAID_SECRET", ""),
-            hide_input=True,
-            confirmation_prompt=True,
-            show_default=False,
-        ).strip()
+        if update_secret:
+            values[key] = typer.prompt(
+                key,
+                default=existing.get(key, ""),
+                hide_input=True,
+                confirmation_prompt=True,
+                show_default=False,
+            ).strip()
+
+    # Prefer split secrets (matches .env.example). PLAID_SECRET remains supported
+    # as a legacy override but is intentionally not prompted here.
+    upsert_secret("PLAID_SANDBOX_SECRET")
+    upsert_secret("PLAID_PRODUCTION_SECRET")
 
     _write_env_file(env_path, values)
     typer.echo(f"Wrote config: {env_path}")

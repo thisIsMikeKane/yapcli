@@ -82,14 +82,14 @@ def test_production_flag_overrides_plaid_env(
 
     out_dir = tmp_path / "out"
 
+    monkeypatch.setenv("PLAID_SECRETS_DIR", str(secrets_dir))
+
     result = runner.invoke(
         cli.app,
         [
             "--production",
             "transactions",
             "--all-accounts",
-            "--secrets-dir",
-            str(secrets_dir),
             "--out-dir",
             str(out_dir),
         ],
@@ -169,14 +169,14 @@ def test_sandbox_flag_overrides_existing_plaid_env(
 
     out_dir = tmp_path / "out"
 
+    monkeypatch.setenv("PLAID_SECRETS_DIR", str(secrets_dir))
+
     result = runner.invoke(
         cli.app,
         [
             "--sandbox",
             "transactions",
             "--all-accounts",
-            "--secrets-dir",
-            str(secrets_dir),
             "--out-dir",
             str(out_dir),
         ],

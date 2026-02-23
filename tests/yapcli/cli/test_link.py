@@ -17,13 +17,15 @@ from yapcli.logging import build_log_path
 def test_build_log_path_uses_timestamp_and_prefix(tmp_path: Path) -> None:
     started_at = dt.datetime(2024, 1, 2, 3, 4, 5)
 
+    log_dir = tmp_path / "logs"
+
     log_path = build_log_path(
-        log_dir=link.LOG_DIR,
+        log_dir=log_dir,
         prefix="backend",
         started_at=started_at,
     )
 
-    assert log_path.parent == link.LOG_DIR
+    assert log_path.parent == log_dir
     assert log_path.name.startswith("backend-20240102-030405")
     assert log_path.suffix == ".log"
 
@@ -103,7 +105,7 @@ def test_terminate_process_stops_running_process(tmp_path: Path) -> None:
         log_handle.close()
 
 
-def test_start_backend_passes_products_env(
+def test_start_backend_passes_products_arg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     secrets_dir = tmp_path / "secrets"
@@ -136,7 +138,7 @@ def test_start_backend_passes_products_env(
     )
 
     try:
-        assert captured_env.get("PLAID_PRODUCTS") == "transactions,investments"
+        assert "PLAID_PRODUCTS" not in captured_env
         assert captured_cmd == [
             link.sys.executable,
             "-m",
@@ -144,6 +146,8 @@ def test_start_backend_passes_products_env(
             "serve",
             "--port",
             "8000",
+            "--products",
+            "transactions,investments",
         ]
     finally:
         managed.log_handle.close()

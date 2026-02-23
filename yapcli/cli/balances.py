@@ -6,14 +6,14 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 import typer
 
-from yapcli.secrets import default_secrets_dir, load_credentials
+from yapcli.secrets import load_credentials
 from yapcli.server import PlaidBackend
 from yapcli.institutions import (
     DiscoveredInstitution,
     discover_institutions,
     prompt_for_institutions,
 )
-from yapcli.utils import default_data_dir, timestamp_for_filename
+from yapcli.utils import default_output_dir, default_secrets_dir, timestamp_for_filename
 
 app = typer.Typer(help="Fetch account/balance information for a linked institution.")
 
@@ -35,14 +35,10 @@ def _payload_to_dataframe(
     return frame
 
 
-def get_accounts_for_institution(
-    *, institution_id: str, secrets_dir: Optional[Path] = None
-) -> Dict[str, Any]:
+def get_accounts_for_institution(*, institution_id: str) -> Dict[str, Any]:
     """Initialize PlaidBackend from secrets and return /accounts response dict."""
 
-    item_id, access_token = load_credentials(
-        institution_id=institution_id, secrets_dir=secrets_dir
-    )
+    item_id, access_token = load_credentials(institution_id=institution_id)
     backend = PlaidBackend(access_token=access_token, item_id=item_id)
     return backend.get_accounts()
 
@@ -53,26 +49,17 @@ def get_balances(
         None,
         help="Institution identifier used in secrets filenames (e.g. ins_109511). If omitted, you'll be prompted to select from saved institutions.",
     ),
-    secrets_dir: Optional[Path] = typer.Option(
-        None,
-        "--secrets-dir",
-        help="Directory containing *_access_token and *_item_id files.",
-        exists=True,
-        file_okay=False,
-        dir_okay=True,
-        readable=True,
-    ),
     out_dir: Optional[Path] = typer.Option(
         None,
         "--out-dir",
-        help="Directory to write CSV files into (default: data/balances).",
+        help="Directory to write CSV files into (default: <output>/balances).",
         file_okay=False,
         dir_okay=True,
     ),
 ) -> None:
     """Print the Plaid /accounts response for a saved institution."""
 
-    secrets_path = secrets_dir or default_secrets_dir()
+    secrets_path = default_secrets_dir()
 
     selected_institutions: List[str]
     if institution_id is None or institution_id.strip() == "":
@@ -90,15 +77,13 @@ def get_balances(
     else:
         selected_institutions = [institution_id]
 
-    balances_out_dir = out_dir or (default_data_dir() / "balances")
+    balances_out_dir = out_dir or (default_output_dir() / "balances")
     balances_out_dir.mkdir(parents=True, exist_ok=True)
 
     timestamp = timestamp_for_filename()
     for inst in selected_institutions:
         try:
-            payload = get_accounts_for_institution(
-                institution_id=inst, secrets_dir=secrets_path
-            )
+            payload = get_accounts_for_institution(institution_id=inst)
         except (FileNotFoundError, ValueError) as exc:
             payload = {"error": str(exc)}
 

@@ -18,21 +18,20 @@ Thanks for helping improve Plaid CLI! This project uses UV for dependency manage
 
 `yapcli` centralizes path resolution in `yapcli/utils.py`.
 
-- **In a development checkout** (repository with `pyproject.toml`):
-  - Config root is the repository root
-  - Default logs are written to `<repo-root>/logs`
-  - Default secrets are read/written under `<repo-root>/secrets` (or `<repo-root>/sandbox/secrets` when `PLAID_ENV=sandbox`)
-- **As an installed package** (pip/pipx):
-  - Config and log directories are chosen via `platformdirs` for app name `yapcli`
-  - Default secrets are under the resolved config dir (`secrets` or `sandbox/secrets`)
-- **Data exports** default to `./data` relative to the current terminal working directory.
+Defaults are environment-driven:
+
+- `YAPCLI_DEFAULT_DIRS` controls default locations for config/secrets/logs:
+   - `CWD`: use the current working directory (e.g. `./.env`, `./secrets`, `./logs`)
+   - `PLATFORMDIRS`: use platform-native locations via `platformdirs` (e.g. `~/.config/yapcli` on Linux)
+- When `PLAID_ENV=sandbox`, secrets/logs/exports use a `sandbox/` subdirectory.
+- **Exports** default to `./output` (production) or `./sandbox/output` (sandbox) relative to the current terminal working directory.
 
 Overrides take precedence:
 
-- CLI option `--secrets-dir`
 - CLI option `--out-dir`
 - Environment variable `PLAID_SECRETS_DIR`
 - Environment variable `YAPCLI_LOG_DIR`
+- Environment variable `YAPCLI_OUTPUT_DIR`
 
 ## Development environment (VS Code + uv)
 

@@ -76,13 +76,13 @@ def test_holdings_all_accounts_without_ids_writes_csv(
 
     out_dir = tmp_path / "out"
 
+    monkeypatch.setenv("PLAID_SECRETS_DIR", str(secrets_dir))
+
     result = runner.invoke(
         cli.app,
         [
             "holdings",
             "--all-accounts",
-            "--secrets-dir",
-            str(secrets_dir),
             "--out-dir",
             str(out_dir),
         ],

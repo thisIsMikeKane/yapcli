@@ -20,11 +20,6 @@ from yapcli.logging import configure_logging
 from yapcli.utils import default_log_dir
 
 console = Console()
-
-
-LOG_DIR = default_log_dir()
-
-
 app = typer.Typer(
     add_completion=False,
     no_args_is_help=True,
@@ -42,8 +37,9 @@ app.add_typer(backend_app)
 def _version_callback(value: bool) -> None:
     """Render the CLI version when the eager --version flag is provided."""
     if value:
+        log_dir = default_log_dir()
         configure_logging(
-            log_dir=LOG_DIR,
+            log_dir=log_dir,
             prefix="version",
             started_at=dt.datetime.now(),
             level=os.getenv("YAPCLI_LOG_LEVEL", "INFO"),
@@ -92,8 +88,9 @@ def main_callback(
 
     level = "DEBUG" if verbose else os.getenv("YAPCLI_LOG_LEVEL", "INFO")
     prefix = ctx.invoked_subcommand or "cli"
+    log_dir = default_log_dir()
     configure_logging(
-        log_dir=LOG_DIR,
+        log_dir=log_dir,
         prefix=prefix,
         started_at=dt.datetime.now(),
         level=level,
