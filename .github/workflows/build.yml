@@ -47,9 +47,11 @@ jobs:
         ls -la yapcli/frontend/build/
         test -f yapcli/frontend/build/index.html
 
-    - name: Run packaging tests
-      run: |
-        uv run --group tox -- tox -e py312-build
+    - name: Setup test suite
+      run: uv run --group tox -- tox run-parallel --parallel auto --parallel-no-spinner --notest --skip-missing-interpreters false
+
+    - name: Run tox
+      run: uv run --group tox -- tox run-parallel --parallel auto --parallel-no-spinner --skip-pkg-install
 
     # - name: Build XML coverage
     #   if: always()

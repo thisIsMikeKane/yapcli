@@ -50,7 +50,7 @@ jobs:
           test -f yapcli/frontend/build/index.html
 
       - name: Setup test suite
-        run: tox run-parallel --parallel auto --parallel-no-spinner --notest --skip-missing-interpreters false
+        run: uv run --group tox -- tox run-parallel --parallel auto --parallel-no-spinner --notest --skip-missing-interpreters false
 
       - name: Run tox
-        run: tox run-parallel --parallel auto --parallel-no-spinner --skip-pkg-install
+        run: uv run --group tox -- tox run-parallel --parallel auto --parallel-no-spinner --skip-pkg-install
