@@ -58,9 +58,7 @@ def build_frontend(*, install_mode: InstallMode, check_lock: bool) -> None:
         raise typer.Exit(1)
 
     npm_install_cmd = (
-        ["npm", "ci"]
-        if resolved_install_mode == InstallMode.ci
-        else ["npm", "install"]
+        ["npm", "ci"] if resolved_install_mode == InstallMode.ci else ["npm", "install"]
     )
 
     npm_env = {

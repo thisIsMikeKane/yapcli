@@ -59,7 +59,9 @@ def clean_build_dirs(project_root: Path) -> None:
     frontend_clean_script = project_root / "scripts" / "build_frontend.py"
     if frontend_clean_script.exists():
         print("\n🎨 Cleaning frontend build artifacts...")
-        run_command([sys.executable, str(frontend_clean_script), "clean"], cwd=project_root)
+        run_command(
+            [sys.executable, str(frontend_clean_script), "clean"], cwd=project_root
+        )
     else:
         print(f"Skipping frontend clean (missing): {frontend_clean_script}")
 
