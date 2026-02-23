@@ -1,5 +1,6 @@
 """Tests for package installation and distribution."""
 
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -49,6 +50,11 @@ class TestPackageBuild:
     @pytest.fixture
     def build_dir(self, project_root: Path) -> Generator[Path, None, None]:
         """Create a temporary build directory."""
+        # Avoid shadowing the PyPI 'build' module with a local ./build directory.
+        local_build_dir = project_root / "build"
+        if local_build_dir.exists():
+            shutil.rmtree(local_build_dir)
+
         build_path = project_root / "dist"
         build_path.mkdir(exist_ok=True)
         yield build_path
@@ -64,13 +70,17 @@ class TestPackageBuild:
                 if item.is_file():
                     item.unlink()
 
-        # Build source distribution
-        result = subprocess.run(
-            [sys.executable, "-m", "build", "--sdist"],
-            cwd=project_root,
-            capture_output=True,
-            text=True,
-        )
+        # Build source distribution with timeout
+        try:
+            result = subprocess.run(
+                [sys.executable, "-m", "build", "--sdist"],
+                cwd=project_root,
+                capture_output=True,
+                text=True,
+                timeout=300,  # 5 minute timeout
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail("Source distribution build timed out after 300 seconds")
 
         if result.returncode != 0:
             pytest.fail(f"Source distribution build failed:\n{result.stderr}")
@@ -107,13 +117,17 @@ class TestPackageBuild:
                 if item.is_file() and item.suffix == ".whl":
                     item.unlink()
 
-        # Build wheel
-        result = subprocess.run(
-            [sys.executable, "-m", "build", "--wheel"],
-            cwd=project_root,
-            capture_output=True,
-            text=True,
-        )
+        # Build wheel with timeout
+        try:
+            result = subprocess.run(
+                [sys.executable, "-m", "build", "--wheel"],
+                cwd=project_root,
+                capture_output=True,
+                text=True,
+                timeout=300,  # 5 minute timeout
+            )
+        except subprocess.TimeoutExpired:
+            pytest.fail("Wheel build timed out after 300 seconds")
 
         if result.returncode != 0:
             pytest.fail(f"Wheel build failed:\n{result.stderr}")
@@ -134,6 +148,7 @@ class TestInstalledPackage:
             [sys.executable, "-m", "venv", str(venv_path)],
             capture_output=True,
             text=True,
+            timeout=120,
         )
 
         if result.returncode != 0:
@@ -157,12 +172,18 @@ class TestInstalledPackage:
             pip_path = venv_dir / "bin" / "pip"
             python_path = venv_dir / "bin" / "python"
 
-        # Build the package first
+        # Avoid shadowing the PyPI 'build' module with a local ./build directory.
+        local_build_dir = project_root / "build"
+        if local_build_dir.exists():
+            shutil.rmtree(local_build_dir)
+
+        # Build the package first with timeout
         result = subprocess.run(
             [sys.executable, "-m", "build", "--wheel"],
             cwd=project_root,
             capture_output=True,
             text=True,
+            timeout=300,  # 5 minute timeout for build
         )
 
         if result.returncode != 0:
@@ -176,11 +197,12 @@ class TestInstalledPackage:
 
         wheel_path = wheels[-1]  # Use the most recent wheel
 
-        # Install the wheel
+        # Install the wheel with timeout
         result = subprocess.run(
             [str(pip_path), "install", str(wheel_path)],
             capture_output=True,
             text=True,
+            timeout=300,  # 5 minute timeout for install
         )
 
         if result.returncode != 0:
@@ -245,7 +267,11 @@ class TestInstalledPackage:
             ],
             capture_output=True,
             text=True,
+            timeout=30,
         )
+
+        if result.returncode != 0:
+            pytest.fail(f"Failed to find yapcli package: {result.stderr}")
 
         if result.returncode != 0:
             pytest.fail(f"Failed to find yapcli package: {result.stderr}")

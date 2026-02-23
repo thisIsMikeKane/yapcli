@@ -1,4 +1,4 @@
-"""Shared pytest configuration and fixtures."""
+"""Pytest fixtures for scripts/packaging tests."""
 
 import subprocess
 import sys
@@ -10,7 +10,7 @@ import pytest
 @pytest.fixture
 def project_root() -> Path:
     """Get the project root directory."""
-    return Path(__file__).parent.parent
+    return Path(__file__).resolve().parent.parent.parent
 
 
 @pytest.fixture
@@ -20,13 +20,16 @@ def frontend_build(project_root: Path) -> Path:
     if not build_script.exists():
         pytest.skip("scripts/build_frontend.py not found")
 
-    # Run the build script
-    result = subprocess.run(
-        [sys.executable, str(build_script)],
-        cwd=project_root,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            [sys.executable, str(build_script)],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=180,  # 3 minute timeout for frontend build
+        )
+    except subprocess.TimeoutExpired:
+        pytest.skip("Frontend build timed out after 180 seconds")
 
     if result.returncode != 0:
         pytest.skip(f"Frontend build failed: {result.stderr}")
