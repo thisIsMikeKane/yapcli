@@ -49,6 +49,6 @@ def serve(
         ),
     ),
 ) -> None:
-    """Run the local Plaid backend server."""
+    """Run the local Plaid backend server (for development and internal use)."""
     flask_app = PlaidBackend(products=_parse_products(products)).app
     flask_app.run(port=port)
