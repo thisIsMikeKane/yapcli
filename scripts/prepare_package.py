@@ -9,11 +9,12 @@ This script:
 4. Optionally uploads to PyPI
 """
 
-import argparse
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+import typer
 
 
 def run_command(
@@ -127,9 +128,8 @@ def upload_to_pypi(project_root: Path, test: bool = True) -> None:
         print("\n📤 Uploading to PyPI...")
         repository = "pypi"
 
-    confirm = input(f"Upload to {repository}? (yes/no): ").strip().lower()
-    if confirm != "yes":
-        print("Upload cancelled")
+    if not typer.confirm(f"Upload to {repository}?"):
+        typer.echo("Upload cancelled")
         return
 
     cmd = [sys.executable, "-m", "twine", "upload"]
@@ -141,49 +141,47 @@ def upload_to_pypi(project_root: Path, test: bool = True) -> None:
     print(f"✓ Uploaded to {repository}")
 
 
-def main() -> None:
-    """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Prepare yapcli package for distribution"
-    )
-    parser.add_argument("--clean", action="store_true", help="Clean previous builds")
-    parser.add_argument(
-        "--no-frontend", action="store_true", help="Skip frontend build"
-    )
-    parser.add_argument("--upload", action="store_true", help="Upload to PyPI")
-    parser.add_argument(
-        "--test-pypi", action="store_true", help="Upload to Test PyPI instead"
-    )
-    args = parser.parse_args()
-
+def main(
+    clean: bool = typer.Option(False, "--clean", help="Clean previous builds."),
+    no_frontend: bool = typer.Option(
+        False, "--no-frontend", help="Skip frontend build."
+    ),
+    upload: bool = typer.Option(False, "--upload", help="Upload to PyPI."),
+    test_pypi: bool = typer.Option(
+        False, "--test-pypi", help="Upload to Test PyPI instead."
+    ),
+) -> None:
     project_root = Path(__file__).parent.parent
 
-    print("=" * 60)
-    print("yapcli Package Distribution Preparation")
-    print("=" * 60)
+    if upload and test_pypi:
+        raise typer.BadParameter("Pass only one of --upload or --test-pypi")
 
-    if args.clean:
+    typer.echo("=" * 60)
+    typer.echo("yapcli Package Distribution Preparation")
+    typer.echo("=" * 60)
+
+    if clean:
         clean_build_dirs(project_root)
 
-    if not args.no_frontend:
+    if not no_frontend:
         build_frontend(project_root)
 
     build_package(project_root)
     validate_package(project_root)
 
-    if args.upload or args.test_pypi:
-        upload_to_pypi(project_root, test=args.test_pypi)
+    if upload or test_pypi:
+        upload_to_pypi(project_root, test=test_pypi)
 
-    print("\n" + "=" * 60)
-    print("✅ Package preparation complete!")
-    print("=" * 60)
+    typer.echo("\n" + "=" * 60)
+    typer.echo("✅ Package preparation complete!")
+    typer.echo("=" * 60)
 
-    if not args.upload and not args.test_pypi:
-        print("\nTo upload to PyPI:")
-        print("  python scripts/prepare_package.py --upload")
-        print("\nTo upload to Test PyPI:")
-        print("  python scripts/prepare_package.py --test-pypi")
+    if not upload and not test_pypi:
+        typer.echo("\nTo upload to PyPI:")
+        typer.echo("  python scripts/prepare_package.py --upload")
+        typer.echo("\nTo upload to Test PyPI:")
+        typer.echo("  python scripts/prepare_package.py --test-pypi")
 
 
 if __name__ == "__main__":
-    main()
+    typer.run(main)
