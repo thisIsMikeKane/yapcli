@@ -22,7 +22,14 @@ def frontend_build(project_root: Path) -> Path:
 
     try:
         result = subprocess.run(
-            [sys.executable, str(build_script)],
+            [
+                sys.executable,
+                str(build_script),
+                "build",
+                "--install-mode",
+                "ci",
+                "--check-lock",
+            ],
             cwd=project_root,
             capture_output=True,
             text=True,

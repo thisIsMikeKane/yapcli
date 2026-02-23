@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Optional
 
 import typer
 
@@ -55,11 +56,29 @@ def clean_build_dirs(project_root: Path) -> None:
         shutil.rmtree(egg_info)
 
 
-def build_frontend(project_root: Path) -> None:
+def build_frontend(
+    project_root: Path,
+    *,
+    frontend_install_mode: str,
+    frontend_check_lock: Optional[bool],
+) -> None:
     """Build the React frontend."""
     print("\n🎨 Building React frontend...")
     build_script = project_root / "scripts" / "build_frontend.py"
-    run_command([sys.executable, str(build_script)], cwd=project_root)
+
+    cmd = [
+        sys.executable,
+        str(build_script),
+        "build",
+        "--install-mode",
+        frontend_install_mode,
+    ]
+    if frontend_check_lock is True:
+        cmd.append("--check-lock")
+    elif frontend_check_lock is False:
+        cmd.append("--no-check-lock")
+
+    run_command(cmd, cwd=project_root)
 
     # Verify build output
     frontend_build = project_root / "yapcli" / "frontend" / "build"
@@ -150,6 +169,16 @@ def main(
     test_pypi: bool = typer.Option(
         False, "--test-pypi", help="Upload to Test PyPI instead."
     ),
+    frontend_install_mode: str = typer.Option(
+        "ci",
+        "--frontend-install-mode",
+        help="Forwarded to scripts/build_frontend.py --install-mode (auto|ci|install).",
+    ),
+    frontend_check_lock: Optional[bool] = typer.Option(
+        None,
+        "--frontend-check-lock/--frontend-no-check-lock",
+        help="Forwarded to scripts/build_frontend.py --check-lock/--no-check-lock.",
+    ),
 ) -> None:
     project_root = Path(__file__).parent.parent
 
@@ -164,7 +193,16 @@ def main(
         clean_build_dirs(project_root)
 
     if not no_frontend:
-        build_frontend(project_root)
+        if frontend_install_mode not in {"auto", "ci", "install"}:
+            raise typer.BadParameter(
+                "Must be one of: auto, ci, install",
+                param_hint="--frontend-install-mode",
+            )
+        build_frontend(
+            project_root,
+            frontend_install_mode=frontend_install_mode,
+            frontend_check_lock=frontend_check_lock,
+        )
 
     build_package(project_root)
     validate_package(project_root)
