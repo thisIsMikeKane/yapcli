@@ -34,6 +34,65 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _read_nvmrc_version(frontend_src: Path) -> str | None:
+    nvmrc = frontend_src / ".nvmrc"
+    if not nvmrc.exists():
+        return None
+    version = nvmrc.read_text(encoding="utf-8").strip()
+    return version or None
+
+
+def _normalize_node_version(version: str) -> str:
+    # Common forms: "v20.11.1" (node -v, .nvmrc) or "20.11.1".
+    return version.strip().lstrip("v").strip()
+
+
+def _check_node_version(*, frontend_src: Path, npm_env: dict[str, str], install_mode: InstallMode) -> None:
+    expected_raw = _read_nvmrc_version(frontend_src)
+    if expected_raw is None:
+        return
+
+    expected = _normalize_node_version(expected_raw)
+
+    node_path = shutil.which("node", path=npm_env.get("PATH"))
+    if node_path is None:
+        typer.echo(
+            "Error: 'node' was not found on PATH. Install Node.js (see frontend/.nvmrc).",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    result = subprocess.run(
+        ["node", "-v"],
+        cwd=frontend_src,
+        env=npm_env,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        typer.echo(
+            "Error: Failed to run 'node -v'. Ensure Node.js is installed and usable.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    actual_raw = (result.stdout or "").strip() or (result.stderr or "").strip()
+    actual = _normalize_node_version(actual_raw)
+
+    if actual != expected:
+        msg = (
+            f"Node version mismatch: expected {expected_raw} (from frontend/.nvmrc) "
+            f"but got {actual_raw} ({node_path})."
+        )
+        # In CI (or when explicitly using reproducible installs), treat as a hard error.
+        resolved_install_mode = _resolve_install_mode(install_mode)
+        if _running_in_ci() or resolved_install_mode == InstallMode.ci:
+            typer.echo(f"Error: {msg}", err=True)
+            raise typer.Exit(1)
+
+        typer.echo(f"Warning: {msg}", err=True)
+
+
 def build_frontend(*, install_mode: InstallMode, check_lock: bool) -> None:
     """Build the React frontend and copy to package directory."""
     project_root = Path(__file__).parent.parent
@@ -66,6 +125,12 @@ def build_frontend(*, install_mode: InstallMode, check_lock: bool) -> None:
         "NPM_CONFIG_AUDIT": "false",
         "NPM_CONFIG_FUND": "false",
     }
+
+    _check_node_version(
+        frontend_src=frontend_src,
+        npm_env=npm_env,
+        install_mode=install_mode,
+    )
 
     lock_hash_before: str | None = None
     if check_lock and package_lock.exists():

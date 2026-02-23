@@ -53,7 +53,23 @@ Overrides take precedence:
    pipx install tox
    ```
 
-4. **Install [node.js](https://nodejs.org/en/download)**  and npm for building the frontend
+4. **Install Node.js and npm for building the frontend**
+
+   The frontend is pinned to a specific Node version via `frontend/.nvmrc`.
+   To avoid “works on my machine” issues, install and use that exact version.
+
+   **Recommended: use [nvm](https://github.com/nvm-sh/nvm)**
+
+   ```bash
+   # From the repo root
+   cd frontend
+   nvm install
+   nvm use
+   node -v
+   ```
+
+   If you don’t want to use `nvm`, install Node.js by any method you prefer,
+   but make sure `node -v` matches the version in `frontend/.nvmrc`.
 
 ### Create uv environments and set as default for VS Code project
 
