@@ -47,7 +47,9 @@ def _normalize_node_version(version: str) -> str:
     return version.strip().lstrip("v").strip()
 
 
-def _check_node_version(*, frontend_src: Path, npm_env: dict[str, str], install_mode: InstallMode) -> None:
+def _check_node_version(
+    *, frontend_src: Path, npm_env: dict[str, str], install_mode: InstallMode
+) -> None:
     expected_raw = _read_nvmrc_version(frontend_src)
     if expected_raw is None:
         return
