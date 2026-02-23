@@ -62,6 +62,12 @@ test = [
 
 tox = [
   "tox>=4.25",
+  "tox-gh-actions>=3.3.0",
+  "tox-uv>=1.25.0",
+]
+
+build_frontend = [
+  "typer>=0.15.3",
 ]
 
 build = [

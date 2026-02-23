@@ -1,9 +1,7 @@
-name: Build and Test Package
+name: Build and Test Artifacts
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
     branches: [ main ]
   workflow_dispatch:
 
@@ -16,6 +14,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
@@ -27,29 +27,27 @@ jobs:
       with:
         node-version: '20'
 
-    - name: Install Python dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install build twine
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        enable-cache: true
+        cache-dependency-glob: |
+          pyproject.toml
+          frontend/package-lock.json
 
-    - name: Install tox + tox-gh-actions plug-in
+    - name: Build frontend (reproducible)
       run: |
-        pip install "tox>=4.25" "tox-gh-actions>=3.3.0" "tox-uv>=1.25.0"
-
-    - name: Build frontend
-      run: |
-        python scripts/build_frontend.py
+        uv run --group build_frontend -- \
+          python scripts/build_frontend.py build --install-mode ci --check-lock
 
     - name: Verify frontend build
       run: |
         ls -la yapcli/frontend/build/
         test -f yapcli/frontend/build/index.html
 
-    - name: Setup test suite
-      run: tox run-parallel --parallel auto --parallel-no-spinner --notest --skip-missing-interpreters false
-
-    - name: Run tox
-      run: tox run-parallel --parallel auto --parallel-no-spinner --skip-pkg-install
+    - name: Run packaging tests
+      run: |
+        uv run --group tox -- tox -e py312-build
 
     # - name: Build XML coverage
     #   if: always()
@@ -79,15 +77,15 @@ jobs:
 
     - name: Build package
       run: |
-        python -m build
+        uv run --group build -- python -m build
 
     - name: Check package contents
       run: |
-        tar -tzf dist/*.tar.gz | grep frontend || (echo "Frontend not found in package" && exit 1)
+        tar -tzf dist/*.tar.gz | grep -E "^yapcli/frontend/build/" || (echo "Frontend not found in package" && exit 1)
 
     - name: Verify package metadata
       run: |
-        python -m twine check dist/*
+        uv run --group build -- python -m twine check dist/*
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
@@ -100,6 +98,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -114,6 +114,7 @@ jobs:
 
     - name: Install package
       run: |
+        python -m pip install --upgrade pip
         pip install dist/*.whl
 
     - name: Test command availability
