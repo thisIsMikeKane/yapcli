@@ -49,6 +49,8 @@ jobs:
           ls -la yapcli/frontend/build/
           test -f yapcli/frontend/build/index.html
 
-      - name: Run unit tests
-        run: |
-          uv run --group tox -- tox -e py312-unit
+      - name: Setup test suite
+        run: tox run-parallel --parallel auto --parallel-no-spinner --notest --skip-missing-interpreters false
+
+      - name: Run tox
+        run: tox run-parallel --parallel auto --parallel-no-spinner --skip-pkg-install
