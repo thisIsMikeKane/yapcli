@@ -7,13 +7,13 @@ from pathlib import Path
 import pytest
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def project_root() -> Path:
     """Get the project root directory."""
     return Path(__file__).resolve().parent.parent.parent
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def frontend_build(project_root: Path) -> Path:
     """Ensure frontend is built in the package directory."""
     build_script = project_root / "scripts" / "build_frontend.py"
