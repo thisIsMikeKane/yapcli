@@ -13,6 +13,11 @@ on:
         options:
           - pypi
           - testpypi
+      verbose:
+        description: Enable verbose publish output
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -65,10 +70,10 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
-          verbose: true
+          verbose: ${{ github.event_name == 'workflow_dispatch' && inputs.verbose }}
 
       - name: Publish to PyPI
         if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.repository == 'pypi') }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          verbose: true
+          verbose: ${{ github.event_name == 'workflow_dispatch' && inputs.verbose }}
