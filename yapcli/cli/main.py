@@ -16,7 +16,7 @@ from yapcli.cli.holdings import app as holdings_app
 from yapcli.cli.investment_transactions import app as investment_transactions_app
 from yapcli.cli.link import app as link_app
 from yapcli.cli.transactions import app as transactions_app
-from yapcli.logging import configure_logging
+from yapcli.logging import configure_logging, log_startup_paths
 from yapcli.utils import default_log_dir
 
 console = Console()
@@ -38,12 +38,14 @@ def _version_callback(value: bool) -> None:
     """Render the CLI version when the eager --version flag is provided."""
     if value:
         log_dir = default_log_dir()
-        configure_logging(
+        log_path = configure_logging(
             log_dir=log_dir,
             prefix="version",
             started_at=dt.datetime.now(),
             level=os.getenv("YAPCLI_LOG_LEVEL", "INFO"),
         )
+        console.print(f"Log file: {log_path}")
+        log_startup_paths()
         console.print(f"[bold green]yapcli[/] v{__version__}")
         raise typer.Exit()
 
@@ -89,12 +91,14 @@ def main_callback(
     level = "DEBUG" if verbose else os.getenv("YAPCLI_LOG_LEVEL", "INFO")
     prefix = ctx.invoked_subcommand or "cli"
     log_dir = default_log_dir()
-    configure_logging(
+    log_path = configure_logging(
         log_dir=log_dir,
         prefix=prefix,
         started_at=dt.datetime.now(),
         level=level,
     )
+    console.print(f"Log file: {log_path}")
+    log_startup_paths()
 
 
 def main() -> None:

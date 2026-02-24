@@ -5,11 +5,12 @@ from pathlib import Path
 from typing import Dict, Iterable
 
 from dotenv import dotenv_values
-from loguru import logger
 from platformdirs import PlatformDirs
 
 _APP_NAME = "yapcli"
 _PLATFORM_DIRS = PlatformDirs(appname=_APP_NAME)
+
+_LOADED_ENV_FILES: list[Path] = []
 
 
 def cwd_env_file_path() -> Path:
@@ -81,6 +82,8 @@ def load_env_files() -> Iterable[Path]:
     platform_path = platform_env_file_path()
     cwd_path = cwd_env_file_path()
 
+    _LOADED_ENV_FILES.clear()
+
     # Capture what was already present so we never override a shell-provided value.
     baseline_keys = set(os.environ.keys())
 
@@ -92,15 +95,7 @@ def load_env_files() -> Iterable[Path]:
             preserve_keys=baseline_keys,
             allow_override=False,
         )
-        logger.debug(
-            "Loaded env vars from {} (applied_new={}, overridden={}, preserved_shell={}, skipped_existing={}, total={})",
-            platform_path,
-            applied_new,
-            overridden,
-            preserved,
-            skipped_existing,
-            len(platform_values),
-        )
+        _LOADED_ENV_FILES.append(platform_path)
 
     cwd_values = _read_env_file(cwd_path)
     if cwd_values:
@@ -109,14 +104,12 @@ def load_env_files() -> Iterable[Path]:
             preserve_keys=baseline_keys,
             allow_override=True,
         )
-        logger.debug(
-            "Loaded env vars from {} (applied_new={}, overridden={}, preserved_shell={}, skipped_existing={}, total={})",
-            cwd_path,
-            applied_new,
-            overridden,
-            preserved,
-            skipped_existing,
-            len(cwd_values),
-        )
+        _LOADED_ENV_FILES.append(cwd_path)
 
     return (platform_path, cwd_path)
+
+
+def loaded_env_file_paths() -> tuple[Path, ...]:
+    """Return env files that were actually loaded (contained at least one value)."""
+
+    return tuple(_LOADED_ENV_FILES)

@@ -63,7 +63,12 @@ def _resolve_plaid_env_and_secret(env: Dict[str, str]) -> tuple[str, Optional[st
     sandbox_secret = _empty_to_none(env, "PLAID_SANDBOX_SECRET")
     production_secret = _empty_to_none(env, "PLAID_PRODUCTION_SECRET")
 
-    plaid_env = explicit_env or "production"
+    if explicit_env is not None:
+        plaid_env = explicit_env
+    elif sandbox_secret and not production_secret:
+        plaid_env = "sandbox"
+    else:
+        plaid_env = "production"
 
     direct_secret = _empty_to_none(env, "PLAID_SECRET")
     if direct_secret is not None:

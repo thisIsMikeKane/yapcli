@@ -40,8 +40,8 @@ yapcli --help
 Use the `config` commands to create and manage your `yapcli` `.env` file:
 
 ```bash
-# Show the default .env path
-yapcli config path
+# Show loaded .env paths and default directories
+yapcli config paths
 
 # Interactive setup (prompts for core values)
 yapcli config init
@@ -77,7 +77,7 @@ yapcli link
 This will:
 
 1. Start a local Flask backend server
-2. Serve the React frontend (Plaid Link UI)
+2. Serve the bundled [Plaid Link frontend](yapcli/frontend/build/index.html)
 3. Open your browser to complete the Plaid Link flow
 4. Save credentials to the default secrets directory (see Default paths below)
 

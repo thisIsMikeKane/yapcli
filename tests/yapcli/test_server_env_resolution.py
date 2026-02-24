@@ -38,6 +38,22 @@ def test_uses_env_specific_secret_when_plaid_secret_missing_and_env_is_sandbox()
     assert plaid_secret == "sandbox-secret"
 
 
+def test_defaults_to_sandbox_when_only_sandbox_secret_defined_and_plaid_env_missing() -> (
+    None
+):
+    env = {
+        "PLAID_CLIENT_ID": "client",
+        "PLAID_SANDBOX_SECRET": "sandbox-secret",
+        # PLAID_ENV missing
+        # PLAID_PRODUCTION_SECRET missing
+        # PLAID_SECRET missing
+    }
+
+    plaid_env, plaid_secret = _resolve_plaid_env_and_secret(env)
+    assert plaid_env == "sandbox"
+    assert plaid_secret == "sandbox-secret"
+
+
 def test_uses_env_specific_secret_when_plaid_secret_missing_and_env_is_production() -> (
     None
 ):

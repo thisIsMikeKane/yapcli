@@ -6,7 +6,13 @@ from typing import Dict
 import typer
 from dotenv import dotenv_values
 
-from yapcli.utils import default_env_file_path
+from yapcli.env import loaded_env_file_paths
+from yapcli.utils import (
+    default_env_file_path,
+    default_log_dir,
+    default_output_dir,
+    default_secrets_dir,
+)
 
 app = typer.Typer(help="Manage yapcli configuration values.")
 
@@ -46,11 +52,22 @@ def _is_sensitive_key(key: str) -> bool:
     return "SECRET" in key_upper or "TOKEN" in key_upper or "PASSWORD" in key_upper
 
 
-@app.command("path")
-def config_path() -> None:
-    """Print the default path used for yapcli .env configuration."""
+@app.command("paths")
+def config_paths() -> None:
+    """Print env/config paths used by yapcli."""
 
-    typer.echo(str(default_env_file_path()))
+    loaded_envs = loaded_env_file_paths()
+    typer.echo("Loaded .env files:")
+    if loaded_envs:
+        for path in loaded_envs:
+            typer.echo(f"  {path}")
+    else:
+        typer.echo("  (none)")
+
+    typer.echo("Default directories:")
+    typer.echo(f"  secrets: {default_secrets_dir()}")
+    typer.echo(f"  logs:    {default_log_dir()}")
+    typer.echo(f"  output:  {default_output_dir()}")
 
 
 @app.command("init")
@@ -74,6 +91,7 @@ def init_config(
         "PLAID_ENV",
         default=existing.get("PLAID_ENV", "sandbox"),
     ).strip()
+
     country_codes = typer.prompt(
         "PLAID_COUNTRY_CODES",
         default=existing.get("PLAID_COUNTRY_CODES", "US,CA"),

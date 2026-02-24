@@ -107,16 +107,18 @@ This project uses standard Python build tooling (PEP 517/518) with git-derived v
 
 1. **Build the React frontend**
 
-   The frontend must be built before packaging:
+   The frontend must be built before packaging, and after any change under `frontend/` if you want `yapcli link` to reflect those changes:
 
    ```bash
-   python scripts/build_frontend.py
+   python scripts/build_frontend.py build
    ```
 
    This will:
    - Install npm dependencies in the `frontend/` directory
    - Build the React app with `npm run build`
    - Copy the build output to `yapcli/frontend/build/`
+
+   `yapcli link` serves from `yapcli/frontend/build/index.html`, so unbuilt changes in `frontend/` are not visible until this command is run.
 
    Alternatively, use the automated preparation script:
 
