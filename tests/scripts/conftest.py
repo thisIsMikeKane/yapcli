@@ -39,8 +39,8 @@ def frontend_build(project_root: Path) -> Path:
         pytest.skip("Frontend build timed out after 180 seconds")
 
     if result.returncode != 0:
-        output = (result.stdout or "") + (result.stderr or "")
-        if "Node version mismatch" in output:
+        output = "\n".join(filter(None, [result.stdout, result.stderr]))
+        if "Error: Node version mismatch:" in output:
             pytest.fail(f"Frontend build failed: {output}")
         pytest.skip(f"Frontend build failed: {result.stderr}")
 
