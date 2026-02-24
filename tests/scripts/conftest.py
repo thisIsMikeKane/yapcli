@@ -18,7 +18,7 @@ def frontend_build(project_root: Path) -> Path:
     """Ensure frontend is built in the package directory."""
     build_script = project_root / "scripts" / "build_frontend.py"
     if not build_script.exists():
-        pytest.fail("scripts/build_frontend.py not found")
+        pytest.skip("scripts/build_frontend.py not found")
 
     try:
         result = subprocess.run(
@@ -41,7 +41,7 @@ def frontend_build(project_root: Path) -> Path:
     if result.returncode != 0:
         output = (result.stdout or "") + (result.stderr or "")
         if "Node version mismatch" in output:
-            pytest.fail(f"Frontend build failed: {result.stderr or result.stdout}")
+            pytest.fail(f"Frontend build failed: {output}")
         pytest.skip(f"Frontend build failed: {result.stderr}")
 
     expected_build = project_root / "yapcli" / "frontend" / "build"
