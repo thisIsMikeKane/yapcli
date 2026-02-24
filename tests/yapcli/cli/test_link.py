@@ -183,7 +183,11 @@ def test_link_defaults_to_sandbox_secrets_dir(monkeypatch: pytest.MonkeyPatch) -
         ],
     )
 
-    assert result.exit_code == 0
+    assert result.exit_code == 0, (
+        f"Expected success but got exit_code={result.exit_code}\n"
+        f"Output:\n{result.output}\n"
+        f"Exception: {result.exception!r}"
+    )
     assert seen["secrets_dir"] == link.default_secrets_dir()
 
 
