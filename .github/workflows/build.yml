@@ -1,0 +1,133 @@
+name: Build and Test Artifacts
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version-file: frontend/.nvmrc
+        cache: npm
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        enable-cache: true
+        cache-dependency-glob: |
+          pyproject.toml
+          frontend/package-lock.json
+
+    - name: Build frontend (reproducible)
+      run: |
+        uv run --group build_frontend -- \
+          python scripts/build_frontend.py build --install-mode ci --check-lock
+
+    - name: Verify frontend build
+      run: |
+        ls -la yapcli/frontend/build/
+        test -f yapcli/frontend/build/index.html
+
+    - name: Setup test suite
+      run: uv run --group tox -- tox run-parallel --parallel auto --parallel-no-spinner --notest --skip-missing-interpreters false
+
+    - name: Run tox
+      run: uv run --group tox -- tox run-parallel --parallel auto --parallel-no-spinner --skip-pkg-install
+
+    # - name: Build XML coverage
+    #   if: always()
+    #   run: |
+    #     python -Im pip install --quiet "coverage[toml]"
+    #     # Merge every .cover/.* created by tox in the `.cover/` directory into one .coverage
+    #     python -Im coverage combine .cover
+    #     # Produce the XML file Codecov will look for
+    #     python -Im coverage xml -i \
+    #         -o .cover/coverage.${{ matrix.python-version }}.xml
+
+    # - name: Upload coverage to Codecov
+    #   if: always()
+    #   uses: codecov/codecov-action@v5
+    #   with:
+    #     files: .cover/coverage.${{ matrix.python-version }}.xml
+    #     flags: py${{ matrix.python-version }}
+    #     token: ${{ secrets.CODECOV_TOKEN }}
+
+    # - name: Upload test results to Codecov
+    #   if: always()
+    #   uses: codecov/test-results-action@v1
+    #   with:
+    #     # pick up every junit.*.xml written by tox in the `.junit/` directory
+    #     files: .junit/junit.*.xml
+    #     token: ${{ secrets.CODECOV_TOKEN }}
+
+    - name: Build package
+      run: |
+        uv run --group build -- python -m build
+
+    - name: Check package contents
+      run: |
+        tar -tzf dist/*.tar.gz | grep -E "^yapcli/frontend/build/" || (echo "Frontend not found in package" && exit 1)
+
+    - name: Verify package metadata
+      run: |
+        uv run --group build -- python -m twine check dist/*
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: dist-packages
+        path: dist/
+
+  test-install:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: dist-packages
+        path: dist/
+
+    - name: Install package
+      run: |
+        python -m pip install --upgrade pip
+        pip install dist/*.whl
+
+    - name: Test command availability
+      run: |
+        yapcli --version
+        yapcli --help
+        yapcli link --help
+
+    - name: Verify frontend files installed
+      run: |
+        cd /tmp
+        python -c "import yapcli; from pathlib import Path; pkg_dir = Path(yapcli.__file__).parent; frontend = pkg_dir / 'frontend' / 'build' / 'index.html'; assert frontend.exists(), f'Frontend not found at {frontend}'"

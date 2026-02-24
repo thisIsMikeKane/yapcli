@@ -6,25 +6,25 @@ import pandas as pd
 import typer
 
 from yapcli.accounts import DiscoveredAccount, resolve_target_accounts
-from yapcli.secrets import default_secrets_dir, load_credentials
+from yapcli.secrets import load_credentials
 from yapcli.server import PlaidBackend
-from yapcli.utils import default_data_dir, safe_filename_component, timestamp_for_filename
+from yapcli.utils import (
+    default_output_dir,
+    default_secrets_dir,
+    safe_filename_component,
+    timestamp_for_filename,
+)
 
 app = typer.Typer(help="Fetch investment transactions for one or more accounts.")
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def get_investments_transactions_for_institution(
     *,
     institution_id: str,
-    secrets_dir: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """Initialize PlaidBackend from secrets and return /investments_transactions response dict."""
 
-    item_id, access_token = load_credentials(
-        institution_id=institution_id, secrets_dir=secrets_dir
-    )
+    item_id, access_token = load_credentials(institution_id=institution_id)
     backend = PlaidBackend(access_token=access_token, item_id=item_id)
     return backend.get_investments_transactions()
 
@@ -35,7 +35,9 @@ def _payload_to_dataframe(
     institution_id: str,
     account: DiscoveredAccount,
 ) -> pd.DataFrame:
-    inner = payload.get("investments_transactions") if isinstance(payload, dict) else None
+    inner = (
+        payload.get("investments_transactions") if isinstance(payload, dict) else None
+    )
     txns_list: Any = None
     if isinstance(inner, dict):
         txns_list = inner.get("investment_transactions")
@@ -45,7 +47,8 @@ def _payload_to_dataframe(
         rows = [
             cast_row
             for cast_row in txns_list
-            if isinstance(cast_row, dict) and cast_row.get("account_id") == account.account_id
+            if isinstance(cast_row, dict)
+            and cast_row.get("account_id") == account.account_id
         ]
         frame = pd.json_normalize(rows)
     else:
@@ -79,15 +82,6 @@ def get_investment_transactions(
             "If you pass account_ids, no prompt is shown."
         ),
     ),
-    secrets_dir: Optional[Path] = typer.Option(
-        None,
-        "--secrets-dir",
-        help="Directory containing *_access_token and *_item_id files.",
-        exists=True,
-        file_okay=False,
-        dir_okay=True,
-        readable=True,
-    ),
     all_accounts: bool = typer.Option(
         False,
         "--all-accounts",
@@ -97,14 +91,14 @@ def get_investment_transactions(
     out_dir: Optional[Path] = typer.Option(
         None,
         "--out-dir",
-        help="Directory to write CSV files into (default: data/investment_transactions).",
+        help="Directory to write CSV files into (default: <output>/investment_transactions).",
         file_okay=False,
         dir_okay=True,
     ),
 ) -> None:
     """Fetch investment transactions for one or more eligible accounts and write CSV(s)."""
 
-    secrets_path = secrets_dir or default_secrets_dir()
+    secrets_path = default_secrets_dir()
 
     selected_accounts = resolve_target_accounts(
         ids=ids,
@@ -113,7 +107,7 @@ def get_investment_transactions(
         allowed_account_types={"depository", "investment"},
     )
 
-    out_base = out_dir or (default_data_dir() / "investment_transactions")
+    out_base = out_dir or (default_output_dir() / "investment_transactions")
     out_base.mkdir(parents=True, exist_ok=True)
 
     timestamp = timestamp_for_filename()
@@ -125,7 +119,6 @@ def get_investment_transactions(
                 payload_by_institution[account.institution_id] = (
                     get_investments_transactions_for_institution(
                         institution_id=account.institution_id,
-                        secrets_dir=secrets_path,
                     )
                 )
             except (FileNotFoundError, ValueError) as exc:

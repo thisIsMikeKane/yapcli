@@ -11,7 +11,9 @@ from typer.testing import CliRunner
 from yapcli import cli
 
 
-def test_production_flag_overrides_plaid_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_production_flag_overrides_plaid_env(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     runner = CliRunner()
 
     # Ensure we're not relying on an external environment.
@@ -80,14 +82,14 @@ def test_production_flag_overrides_plaid_env(monkeypatch: pytest.MonkeyPatch, tm
 
     out_dir = tmp_path / "out"
 
+    monkeypatch.setenv("PLAID_SECRETS_DIR", str(secrets_dir))
+
     result = runner.invoke(
         cli.app,
         [
             "--production",
             "transactions",
             "--all-accounts",
-            "--secrets-dir",
-            str(secrets_dir),
             "--out-dir",
             str(out_dir),
         ],
@@ -97,7 +99,9 @@ def test_production_flag_overrides_plaid_env(monkeypatch: pytest.MonkeyPatch, tm
     assert "production" in seen_env
 
 
-def test_sandbox_flag_overrides_existing_plaid_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_sandbox_flag_overrides_existing_plaid_env(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     runner = CliRunner()
 
     # Start with production, then force sandbox via flag.
@@ -165,14 +169,14 @@ def test_sandbox_flag_overrides_existing_plaid_env(monkeypatch: pytest.MonkeyPat
 
     out_dir = tmp_path / "out"
 
+    monkeypatch.setenv("PLAID_SECRETS_DIR", str(secrets_dir))
+
     result = runner.invoke(
         cli.app,
         [
             "--sandbox",
             "transactions",
             "--all-accounts",
-            "--secrets-dir",
-            str(secrets_dir),
             "--out-dir",
             str(out_dir),
         ],

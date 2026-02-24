@@ -9,19 +9,24 @@ import pandas as pd
 import typer
 
 from yapcli.accounts import DiscoveredAccount, resolve_target_accounts
-from yapcli.secrets import default_secrets_dir, load_credentials
+from yapcli.secrets import load_credentials
 from yapcli.server import PlaidBackend
-from yapcli.utils import default_data_dir, safe_filename_component, timestamp_for_filename
+from yapcli.utils import (
+    default_output_dir,
+    default_secrets_dir,
+    safe_filename_component,
+    timestamp_for_filename,
+)
 
 app = typer.Typer(help="Fetch transactions for a linked institution.")
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 _META_FILENAME_RE = re.compile(r"(?P<ts>\d{8}T\d{6}Z)_meta\.json$")
 
 
-def build_transactions_account_dir(*, out_dir: Path, account: DiscoveredAccount) -> Path:
+def build_transactions_account_dir(
+    *, out_dir: Path, account: DiscoveredAccount
+) -> Path:
     inst_component = safe_filename_component(
         str(account.institution_id) + "_" + str(account.bank_name)
     )
@@ -31,7 +36,9 @@ def build_transactions_account_dir(*, out_dir: Path, account: DiscoveredAccount)
     return out_dir / inst_component / account_component
 
 
-def _load_latest_meta_cursor(*, out_dir: Path, account: DiscoveredAccount) -> Optional[str]:
+def _load_latest_meta_cursor(
+    *, out_dir: Path, account: DiscoveredAccount
+) -> Optional[str]:
     account_dir = build_transactions_account_dir(out_dir=out_dir, account=account)
     if not account_dir.exists():
         return None
@@ -53,12 +60,18 @@ def _load_latest_meta_cursor(*, out_dir: Path, account: DiscoveredAccount) -> Op
     try:
         meta = json.loads(latest_meta.read_text())
     except OSError as exc:
-        raise typer.BadParameter(f"Unable to read meta file: {latest_meta} ({exc})") from exc
+        raise typer.BadParameter(
+            f"Unable to read meta file: {latest_meta} ({exc})"
+        ) from exc
     except json.JSONDecodeError as exc:
-        raise typer.BadParameter(f"Invalid JSON in meta file: {latest_meta} ({exc})") from exc
+        raise typer.BadParameter(
+            f"Invalid JSON in meta file: {latest_meta} ({exc})"
+        ) from exc
 
     if not isinstance(meta, dict):
-        raise typer.BadParameter(f"Invalid meta file format (expected object): {latest_meta}")
+        raise typer.BadParameter(
+            f"Invalid meta file format (expected object): {latest_meta}"
+        )
 
     meta_account_id = meta.get("account_id")
     if meta_account_id != account.account_id:
@@ -68,9 +81,7 @@ def _load_latest_meta_cursor(*, out_dir: Path, account: DiscoveredAccount) -> Op
 
     meta_cursor = meta.get("cursor")
     if not isinstance(meta_cursor, str) or meta_cursor.strip() == "":
-        raise typer.BadParameter(
-            f"Meta file missing non-empty cursor: {latest_meta}"
-        )
+        raise typer.BadParameter(f"Meta file missing non-empty cursor: {latest_meta}")
 
     return meta_cursor.strip()
 
@@ -117,18 +128,16 @@ def build_transactions_meta_path(
     )
     return csv_path.with_name(f"{timestamp}_meta.json")
 
+
 def get_transactions_for_institution(
     *,
     institution_id: str,
     account_id: Optional[str] = None,
     cursor: Optional[str] = None,
-    secrets_dir: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """Initialize PlaidBackend from secrets and return /transactions response dict."""
 
-    item_id, access_token = load_credentials(
-        institution_id=institution_id, secrets_dir=secrets_dir
-    )
+    item_id, access_token = load_credentials(institution_id=institution_id)
     backend = PlaidBackend(access_token=access_token, item_id=item_id)
     if isinstance(cursor, str) and cursor.strip() != "":
         return backend.get_transactions(account_id=account_id, cursor=cursor.strip())
@@ -177,6 +186,7 @@ def _payload_to_dataframe(
         frame["bank_name"] = account.bank_name
     return frame
 
+
 @app.command("transactions")
 def get_transactions(
     ids: Optional[List[str]] = typer.Argument(
@@ -187,15 +197,6 @@ def get_transactions(
             "If you pass account_ids, no prompt is shown."
         ),
     ),
-    secrets_dir: Optional[Path] = typer.Option(
-        None,
-        "--secrets-dir",
-        help="Directory containing *_access_token and *_item_id files.",
-        exists=True,
-        file_okay=False,
-        dir_okay=True,
-        readable=True,
-    ),
     all_accounts: bool = typer.Option(
         False,
         "--all-accounts",
@@ -205,7 +206,7 @@ def get_transactions(
     out_dir: Optional[Path] = typer.Option(
         None,
         "--out-dir",
-        help="Directory to write CSV files into (default: data/transactions).",
+        help="Directory to write CSV files into (default: <output>/transactions).",
         file_okay=False,
         dir_okay=True,
     ),
@@ -227,7 +228,7 @@ def get_transactions(
 ) -> None:
     """Fetch transactions for one or more accounts and write CSV(s)."""
 
-    secrets_path = secrets_dir or default_secrets_dir()
+    secrets_path = default_secrets_dir()
 
     ids_list = [value for value in (ids or []) if value.strip() != ""]
     if sync and cursor is not None:
@@ -253,7 +254,7 @@ def get_transactions(
         allowed_account_types={"depository", "credit", "loan", "other"},
     )
 
-    transactions_out_dir = out_dir or (default_data_dir() / "transactions")
+    transactions_out_dir = out_dir or (default_output_dir() / "transactions")
     transactions_out_dir.mkdir(parents=True, exist_ok=True)
 
     timestamp = timestamp_for_filename()
@@ -272,7 +273,6 @@ def get_transactions(
                 institution_id=account.institution_id,
                 account_id=account.account_id,
                 cursor=effective_cursor,
-                secrets_dir=secrets_path,
             )
         except (FileNotFoundError, ValueError) as exc:
             payload = {"error": str(exc)}
@@ -284,7 +284,11 @@ def get_transactions(
                 error_code = payload_error.get("error_code")
                 display_message = payload_error.get("display_message")
                 if isinstance(error_code, str) and error_code.strip() != "":
-                    message = f"{error_code}: {display_message}" if display_message else error_code
+                    message = (
+                        f"{error_code}: {display_message}"
+                        if display_message
+                        else error_code
+                    )
                 elif isinstance(display_message, str) and display_message.strip() != "":
                     message = display_message
             elif isinstance(payload_error, str) and payload_error.strip() != "":

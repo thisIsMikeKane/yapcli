@@ -5,6 +5,26 @@ from pathlib import Path
 
 from loguru import logger
 
+from yapcli.env import loaded_env_file_paths
+from yapcli.utils import default_log_dir, default_output_dir, default_secrets_dir
+
+
+def log_startup_paths() -> None:
+    """Log the same path info shown by `yapcli config paths`."""
+
+    loaded_envs = loaded_env_file_paths()
+    if loaded_envs:
+        logger.info("Loaded .env files: {}", ", ".join(str(p) for p in loaded_envs))
+    else:
+        logger.info("Loaded .env files: (none)")
+
+    logger.info(
+        "Default directories: secrets_dir={}, log_dir={}, output_dir={}",
+        default_secrets_dir(),
+        default_log_dir(),
+        default_output_dir(),
+    )
+
 
 def build_log_path(*, log_dir: Path, prefix: str, started_at: dt.datetime) -> Path:
     timestamp = started_at.strftime("%Y%m%d-%H%M%S")
@@ -28,6 +48,4 @@ def configure_logging(
         enqueue=True,
         format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {message}",
     )
-
-    logger.info("Logging configured. Log file: {}", log_path)
     return log_path

@@ -13,7 +13,6 @@ from yapcli.institutions import discover_institutions
 from yapcli.secrets import load_credentials
 from yapcli.server import PlaidBackend
 
-
 _INSTITUTION_ID_RE = re.compile(r"ins_\d+")
 
 
@@ -110,7 +109,9 @@ def resolve_target_accounts(
     discovered_institutions = discover_institutions(secrets_dir=secrets_dir)
 
     ids_list = _normalize_ids(ids)
-    is_institution_id = [bool(_INSTITUTION_ID_RE.fullmatch(value)) for value in ids_list]
+    is_institution_id = [
+        bool(_INSTITUTION_ID_RE.fullmatch(value)) for value in ids_list
+    ]
 
     selected_accounts: List[DiscoveredAccount]
 
@@ -123,7 +124,9 @@ def resolve_target_accounts(
         if not accounts:
             raise typer.BadParameter("No accounts found for saved institutions")
 
-        accounts = _eligible_accounts(accounts=accounts, allowed_types=allowed_account_types)
+        accounts = _eligible_accounts(
+            accounts=accounts, allowed_types=allowed_account_types
+        )
 
         if all_accounts:
             selected_accounts = accounts
@@ -137,7 +140,9 @@ def resolve_target_accounts(
 
     # All ids match institution id pattern: treat as institutions.
     if all(is_institution_id):
-        institutions_by_id = {inst.institution_id: inst for inst in discovered_institutions}
+        institutions_by_id = {
+            inst.institution_id: inst for inst in discovered_institutions
+        }
         unknown = [value for value in ids_list if value not in institutions_by_id]
         if unknown:
             raise typer.BadParameter(
@@ -145,11 +150,15 @@ def resolve_target_accounts(
             )
 
         institutions = [institutions_by_id[value] for value in ids_list]
-        accounts = _discover_accounts(institutions=institutions, secrets_dir=secrets_dir)
+        accounts = _discover_accounts(
+            institutions=institutions, secrets_dir=secrets_dir
+        )
         if not accounts:
             raise typer.BadParameter("No accounts found for provided institutions")
 
-        accounts = _eligible_accounts(accounts=accounts, allowed_types=allowed_account_types)
+        accounts = _eligible_accounts(
+            accounts=accounts, allowed_types=allowed_account_types
+        )
 
         if all_accounts:
             selected_accounts = accounts

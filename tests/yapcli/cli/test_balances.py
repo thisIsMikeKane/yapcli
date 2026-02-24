@@ -39,9 +39,10 @@ def test_get_accounts_for_institution_reads_secrets_and_calls_backend(
 
     monkeypatch.setattr(balances_get, "PlaidBackend", FakeBackend)
 
+    monkeypatch.setenv("PLAID_SECRETS_DIR", str(secrets_dir))
+
     payload = balances_get.get_accounts_for_institution(
         institution_id="ins_109511",
-        secrets_dir=secrets_dir,
     )
 
     assert payload == {"accounts": [{"id": "acct-1"}]}
@@ -95,12 +96,12 @@ def test_balances_without_institution_prompts_and_allows_all_selection(
 
     out_dir = tmp_path / "out"
 
+    monkeypatch.setenv("PLAID_SECRETS_DIR", str(secrets_dir))
+
     result = runner.invoke(
         cli.app,
         [
             "balances",
-            "--secrets-dir",
-            str(secrets_dir),
             "--out-dir",
             str(out_dir),
         ],

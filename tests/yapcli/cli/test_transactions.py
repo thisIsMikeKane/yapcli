@@ -82,12 +82,12 @@ def test_transactions_without_institution_prompts_and_writes_csv(
 
     out_dir = tmp_path / "out"
 
+    monkeypatch.setenv("PLAID_SECRETS_DIR", str(secrets_dir))
+
     result = runner.invoke(
         cli.app,
         [
             "transactions",
-            "--secrets-dir",
-            str(secrets_dir),
             "--out-dir",
             str(out_dir),
         ],
@@ -171,14 +171,14 @@ def test_transactions_with_account_ids_writes_csv_without_prompt(
 
     out_dir = tmp_path / "out"
 
+    monkeypatch.setenv("PLAID_SECRETS_DIR", str(secrets_dir))
+
     result = runner.invoke(
         cli.app,
         [
             "transactions",
             "acct-access-1",
             "acct-access-2",
-            "--secrets-dir",
-            str(secrets_dir),
             "--out-dir",
             str(out_dir),
         ],
@@ -262,6 +262,8 @@ def test_transactions_with_institution_ids_all_accounts_skips_prompt(
 
     out_dir = tmp_path / "out"
 
+    monkeypatch.setenv("PLAID_SECRETS_DIR", str(secrets_dir))
+
     result = runner.invoke(
         cli.app,
         [
@@ -269,8 +271,6 @@ def test_transactions_with_institution_ids_all_accounts_skips_prompt(
             "ins_1",
             "ins_2",
             "--all-accounts",
-            "--secrets-dir",
-            str(secrets_dir),
             "--out-dir",
             str(out_dir),
         ],
@@ -353,13 +353,13 @@ def test_transactions_warns_when_backend_returns_error(
 
     out_dir = tmp_path / "out"
 
+    monkeypatch.setenv("PLAID_SECRETS_DIR", str(secrets_dir))
+
     result = runner.invoke(
         cli.app,
         [
             "transactions",
             "acct-access-1",
-            "--secrets-dir",
-            str(secrets_dir),
             "--out-dir",
             str(out_dir),
         ],
@@ -437,13 +437,13 @@ def test_transactions_all_accounts_without_ids_processes_everything(
 
     out_dir = tmp_path / "out"
 
+    monkeypatch.setenv("PLAID_SECRETS_DIR", str(secrets_dir))
+
     result = runner.invoke(
         cli.app,
         [
             "transactions",
             "--all-accounts",
-            "--secrets-dir",
-            str(secrets_dir),
             "--out-dir",
             str(out_dir),
         ],
@@ -540,13 +540,13 @@ def test_transactions_warns_and_writes_modified_and_removed_csvs(
 
     out_dir = tmp_path / "out"
 
+    monkeypatch.setenv("PLAID_SECRETS_DIR", str(secrets_dir))
+
     result = runner.invoke(
         cli.app,
         [
             "transactions",
             "acct-access-1",
-            "--secrets-dir",
-            str(secrets_dir),
             "--out-dir",
             str(out_dir),
         ],
@@ -574,6 +574,8 @@ def test_transactions_cursor_option_only_allowed_for_single_account_id(
     (secrets_dir / "ins_1_item_id").write_text("item-1")
     (secrets_dir / "ins_1_access_token").write_text("access-1")
 
+    monkeypatch.setenv("PLAID_SECRETS_DIR", str(secrets_dir))
+
     result = runner.invoke(
         cli.app,
         [
@@ -582,8 +584,6 @@ def test_transactions_cursor_option_only_allowed_for_single_account_id(
             "acct-access-2",
             "--cursor",
             ("B" * 91) + "=",
-            "--secrets-dir",
-            str(secrets_dir),
             "--out-dir",
             str(tmp_path / "out"),
         ],
@@ -602,6 +602,8 @@ def test_transactions_cursor_option_passes_cursor_to_backend_and_filename(
     secrets_dir.mkdir()
     (secrets_dir / "ins_1_item_id").write_text("item-1")
     (secrets_dir / "ins_1_access_token").write_text("access-1")
+
+    monkeypatch.setenv("PLAID_SECRETS_DIR", str(secrets_dir))
 
     seen: dict[str, str | None] = {"cursor": None}
     requested_cursor = ("B" * 91) + "="
@@ -664,6 +666,8 @@ def test_transactions_cursor_option_passes_cursor_to_backend_and_filename(
 
     out_dir = tmp_path / "out"
 
+    monkeypatch.setenv("PLAID_SECRETS_DIR", str(secrets_dir))
+
     result = runner.invoke(
         cli.app,
         [
@@ -671,8 +675,6 @@ def test_transactions_cursor_option_passes_cursor_to_backend_and_filename(
             "acct-access-1",
             "--cursor",
             requested_cursor,
-            "--secrets-dir",
-            str(secrets_dir),
             "--out-dir",
             str(out_dir),
         ],
@@ -730,7 +732,7 @@ def test_transactions_sync_uses_latest_meta_cursor(
         json.dumps({"account_id": account.account_id, "cursor": ("O" * 10)}, indent=2)
     )
 
-    new_cursor = ("N" * 10)
+    new_cursor = "N" * 10
     new_meta = transactions.build_transactions_meta_path(
         out_dir=out_dir, account=account, timestamp="20260216T000000Z"
     )
@@ -795,14 +797,14 @@ def test_transactions_sync_uses_latest_meta_cursor(
 
     monkeypatch.setattr(questionary, "checkbox", fail_checkbox)
 
+    monkeypatch.setenv("PLAID_SECRETS_DIR", str(secrets_dir))
+
     result = runner.invoke(
         cli.app,
         [
             "transactions",
             "acct-access-1",
             "--sync",
-            "--secrets-dir",
-            str(secrets_dir),
             "--out-dir",
             str(out_dir),
         ],
@@ -890,14 +892,14 @@ def test_transactions_sync_errors_on_account_id_mismatch(
 
     monkeypatch.setattr(questionary, "checkbox", fail_checkbox)
 
+    monkeypatch.setenv("PLAID_SECRETS_DIR", str(secrets_dir))
+
     result = runner.invoke(
         cli.app,
         [
             "transactions",
             "acct-access-1",
             "--sync",
-            "--secrets-dir",
-            str(secrets_dir),
             "--out-dir",
             str(out_dir),
         ],
@@ -969,14 +971,14 @@ def test_transactions_sync_with_no_existing_meta_runs_without_cursor(
 
     monkeypatch.setattr(questionary, "checkbox", fail_checkbox)
 
+    monkeypatch.setenv("PLAID_SECRETS_DIR", str(secrets_dir))
+
     result = runner.invoke(
         cli.app,
         [
             "transactions",
             "acct-access-1",
             "--sync",
-            "--secrets-dir",
-            str(secrets_dir),
             "--out-dir",
             str(out_dir),
         ],

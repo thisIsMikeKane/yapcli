@@ -4,45 +4,48 @@ from __future__ import annotations
 
 import datetime as dt
 import os
-from pathlib import Path
 
 import typer
 from rich.console import Console
 
 from yapcli import __version__
 from yapcli.cli.balances import app as balances_app
+from yapcli.cli.backend import app as backend_app
+from yapcli.cli.config import app as config_app
 from yapcli.cli.holdings import app as holdings_app
 from yapcli.cli.investment_transactions import app as investment_transactions_app
 from yapcli.cli.link import app as link_app
 from yapcli.cli.transactions import app as transactions_app
-from yapcli.logging import configure_logging
+from yapcli.logging import configure_logging, log_startup_paths
+from yapcli.utils import default_log_dir
 
 console = Console()
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-LOG_DIR = Path(os.getenv("YAPCLI_LOG_DIR", str(PROJECT_ROOT / "logs")))
-
-
 app = typer.Typer(
     add_completion=False,
     no_args_is_help=True,
     help="Utilities for interacting with Plaid programmatically.",
 )
 app.add_typer(link_app)
+app.add_typer(config_app, name="config")
 app.add_typer(balances_app)
 app.add_typer(holdings_app)
 app.add_typer(investment_transactions_app)
 app.add_typer(transactions_app)
+app.add_typer(backend_app)
 
 
 def _version_callback(value: bool) -> None:
     """Render the CLI version when the eager --version flag is provided."""
     if value:
-        configure_logging(
-            log_dir=LOG_DIR,
+        log_dir = default_log_dir()
+        log_path = configure_logging(
+            log_dir=log_dir,
             prefix="version",
             started_at=dt.datetime.now(),
             level=os.getenv("YAPCLI_LOG_LEVEL", "INFO"),
         )
+        console.print(f"Log file: {log_path}")
+        log_startup_paths()
         console.print(f"[bold green]yapcli[/] v{__version__}")
         raise typer.Exit()
 
@@ -87,12 +90,15 @@ def main_callback(
 
     level = "DEBUG" if verbose else os.getenv("YAPCLI_LOG_LEVEL", "INFO")
     prefix = ctx.invoked_subcommand or "cli"
-    configure_logging(
-        log_dir=LOG_DIR,
+    log_dir = default_log_dir()
+    log_path = configure_logging(
+        log_dir=log_dir,
         prefix=prefix,
         started_at=dt.datetime.now(),
         level=level,
     )
+    console.print(f"Log file: {log_path}")
+    log_startup_paths()
 
 
 def main() -> None:

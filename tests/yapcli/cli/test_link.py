@@ -17,13 +17,15 @@ from yapcli.logging import build_log_path
 def test_build_log_path_uses_timestamp_and_prefix(tmp_path: Path) -> None:
     started_at = dt.datetime(2024, 1, 2, 3, 4, 5)
 
+    log_dir = tmp_path / "logs"
+
     log_path = build_log_path(
-        log_dir=link.LOG_DIR,
+        log_dir=log_dir,
         prefix="backend",
         started_at=started_at,
     )
 
-    assert log_path.parent == link.LOG_DIR
+    assert log_path.parent == log_dir
     assert log_path.name.startswith("backend-20240102-030405")
     assert log_path.suffix == ".log"
 
@@ -103,12 +105,15 @@ def test_terminate_process_stops_running_process(tmp_path: Path) -> None:
         log_handle.close()
 
 
-def test_start_backend_passes_products_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_start_backend_passes_products_arg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     secrets_dir = tmp_path / "secrets"
     secrets_dir.mkdir()
     log_path = tmp_path / "backend.log"
 
     captured_env = {}
+    captured_cmd = []
 
     class FakeProc:
         pid = 123
@@ -116,9 +121,11 @@ def test_start_backend_passes_products_env(tmp_path: Path, monkeypatch: pytest.M
         def poll(self):
             return None
 
-    def fake_popen(cmd, cwd, env, stdout, stderr, start_new_session):
+    def fake_popen(*args, **kwargs):
         nonlocal captured_env
-        captured_env = dict(env)
+        nonlocal captured_cmd
+        captured_cmd = list(args[0])
+        captured_env = dict(kwargs.get("env", {}))
         return FakeProc()
 
     monkeypatch.setattr(link.subprocess, "Popen", fake_popen)
@@ -131,7 +138,17 @@ def test_start_backend_passes_products_env(tmp_path: Path, monkeypatch: pytest.M
     )
 
     try:
-        assert captured_env.get("PLAID_PRODUCTS") == "transactions,investments"
+        assert "PLAID_PRODUCTS" not in captured_env
+        assert captured_cmd == [
+            link.sys.executable,
+            "-m",
+            "yapcli",
+            "serve",
+            "--port",
+            "8000",
+            "--products",
+            "transactions,investments",
+        ]
     finally:
         managed.log_handle.close()
 
@@ -140,7 +157,9 @@ def test_link_defaults_to_sandbox_secrets_dir(monkeypatch: pytest.MonkeyPatch) -
     runner = CliRunner()
     seen: dict[str, Path] = {}
 
-    def fake_start_backend(port: int, secrets_dir: Path, log_path: Path, *, products=None):
+    def fake_start_backend(
+        port: int, secrets_dir: Path, log_path: Path, *, products=None
+    ):
         seen["secrets_dir"] = secrets_dir
         return None
 
@@ -165,8 +184,7 @@ def test_link_defaults_to_sandbox_secrets_dir(monkeypatch: pytest.MonkeyPatch) -
     )
 
     assert result.exit_code == 0
-
-    assert seen["secrets_dir"] == link.PROJECT_ROOT / "sandbox" / "secrets"
+    assert seen["secrets_dir"] == link.default_secrets_dir()
 
 
 def test_link_rejects_invalid_products(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -175,7 +193,9 @@ def test_link_rejects_invalid_products(monkeypatch: pytest.MonkeyPatch) -> None:
     # Ensure we fail before trying to start subprocesses.
     monkeypatch.setattr(link, "start_backend", lambda *args, **kwargs: None)
     monkeypatch.setattr(link, "start_frontend", lambda *args, **kwargs: None)
-    monkeypatch.setattr(link, "wait_for_credentials", lambda **kwargs: ("ins", "item", "access"))
+    monkeypatch.setattr(
+        link, "wait_for_credentials", lambda **kwargs: ("ins", "item", "access")
+    )
     monkeypatch.setattr(link, "terminate_process", lambda *args, **kwargs: None)
 
     result = runner.invoke(

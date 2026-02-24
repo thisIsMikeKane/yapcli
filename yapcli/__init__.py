@@ -2,6 +2,10 @@
 
 from importlib import metadata
 
+from yapcli.env import load_env_files
+
+load_env_files()
+
 try:
     __version__ = metadata.version("yapcli")
 except metadata.PackageNotFoundError:  # pragma: no cover - defensive fallback

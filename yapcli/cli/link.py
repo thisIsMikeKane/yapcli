@@ -16,14 +16,29 @@ from loguru import logger
 from rich.console import Console
 
 from yapcli.logging import build_log_path
-from yapcli.secrets import default_secrets_dir
+from yapcli.utils import default_log_dir, default_secrets_dir
 
 console = Console()
 app = typer.Typer(help="Run Plaid Link locally and capture the resulting tokens.")
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-FRONTEND_DIR = PROJECT_ROOT / "frontend"
-LOG_DIR = PROJECT_ROOT / "logs"
+
+def _get_frontend_dir() -> Path:
+    """Get the packaged frontend directory containing bundled build assets."""
+    yapcli_package_dir = Path(__file__).resolve().parent.parent
+
+    # Otherwise try package-relative path (installed package)
+    packaged_frontend = yapcli_package_dir / "frontend" / "build"
+
+    if packaged_frontend.exists():
+        return packaged_frontend.parent
+
+    # No frontend found
+    raise FileNotFoundError(
+        "Packaged frontend build not found at 'yapcli/frontend/build'. "
+        "Please ensure the package is built with frontend assets included."
+    )
+
+
 DEFAULT_BACKEND_PORT = 8000
 DEFAULT_FRONTEND_PORT = 3000
 POLL_INTERVAL_SECONDS = 2.0
@@ -71,14 +86,14 @@ def start_backend(
     env = os.environ.copy()
     env["PORT"] = str(port)
     env["PLAID_SECRETS_DIR"] = str(secrets_dir)
-    if products is not None and products.strip() != "":
-        env["PLAID_PRODUCTS"] = products
 
     log_file = log_path.open("w")
     try:
+        cmd = [sys.executable, "-m", "yapcli", "serve", "--port", str(port)]
+        if products is not None and products.strip() != "":
+            cmd.extend(["--products", products])
         process = subprocess.Popen(
-            [sys.executable, "-m", "yapcli.server"],
-            cwd=PROJECT_ROOT,
+            cmd,
             env=env,
             stdout=log_file,
             stderr=subprocess.STDOUT,
@@ -98,49 +113,53 @@ def start_backend(
         raise
 
 
-def start_frontend(port: int, serve_build: bool, log_path: Path) -> ManagedProcess:
+def start_frontend(
+    port: int,
+    log_path: Path,
+    *,
+    frontend_dir: Path,
+    backend_port: int,
+) -> ManagedProcess:
+    index_html = frontend_dir / "build" / "index.html"
+    logger.info(
+        "Serving frontend build from yapcli/frontend/build/index.html ({})",
+        index_html,
+    )
+    if not index_html.exists():
+        logger.error("Packaged frontend index.html is missing: {}", index_html)
+        logger.error(
+            "This installation is missing bundled frontend assets. Reinstall or rebuild the package.",
+        )
+        console.print("[red]Packaged frontend build is missing.[/]")
+        console.print("Expected file: yapcli/frontend/build/index.html")
+        raise typer.Exit(1)
+
     env = os.environ.copy()
-    env["PORT"] = str(port)
     log_file = log_path.open("w")
-
     try:
-        if serve_build:
-            build_dir = FRONTEND_DIR / "build"
-            if not build_dir.exists():
-                console.print("[yellow]No build found. Running npm run build...[/]")
-                logger.info("No frontend build found. Building before serve...")
-                subprocess.run(
-                    ["npm", "run", "build"],
-                    cwd=FRONTEND_DIR,
-                    env=env,
-                    check=True,
-                    stdout=log_file,
-                    stderr=subprocess.STDOUT,
-                )
-            cmd = [
-                sys.executable,
-                "-m",
-                "http.server",
-                str(port),
-                "--directory",
-                "build",
-            ]
-        else:
-            cmd = ["npm", "start"]
-
+        cmd = [
+            sys.executable,
+            "-m",
+            "yapcli.frontend_proxy",
+            "--port",
+            str(port),
+            "--backend-port",
+            str(backend_port),
+            "--build-dir",
+            str(frontend_dir / "build"),
+        ]
         process = subprocess.Popen(
             cmd,
-            cwd=FRONTEND_DIR,
             env=env,
             stdout=log_file,
             stderr=subprocess.STDOUT,
             start_new_session=True,
         )
         logger.info(
-            "Started frontend (pid={}, port={}, serve_build={}) log -> {}",
+            "Started frontend (pid={}, port={}, backend_port={}) log -> {}",
             process.pid,
             port,
-            serve_build,
+            backend_port,
             log_path,
         )
         return ManagedProcess(process=process, log_handle=log_file)
@@ -208,7 +227,7 @@ def discover_credentials(
         # Some filesystems have coarse mtime resolution (e.g. 1s). If we compare
         # strictly against a high-resolution started_at, we can miss files that
         # were written shortly after started_at but recorded with an earlier-
-        #rounded mtime.
+        # rounded mtime.
         cutoff = started_at - STARTED_AT_TOLERANCE_SECONDS
         if access_updated < cutoff or item_updated < cutoff:
             continue
@@ -268,18 +287,8 @@ def link(
     frontend_port: int = typer.Option(
         DEFAULT_FRONTEND_PORT,
         "--frontend-port",
-        help="Port for the React frontend.",
+        help="Port for the bundled React frontend.",
         show_default=True,
-    ),
-    serve_build: bool = typer.Option(
-        False,
-        "--serve-build",
-        help="Serve the built frontend instead of running the dev server.",
-    ),
-    secrets_dir: Optional[Path] = typer.Option(
-        None,
-        "--secrets-dir",
-        help="Directory where the backend writes item_id/access_token files.",
     ),
     timeout: int = typer.Option(
         300,
@@ -299,7 +308,6 @@ def link(
         callback=_validate_products,
         help=(
             "Comma-separated Plaid products to request during Link."
-            "Defaults to PLAID_PRODUCTS env var or 'transactions' if not set. "
             "Example: --products=transactions,investments"
         ),
     ),
@@ -311,14 +319,15 @@ def link(
     started_dt = dt.datetime.fromtimestamp(started_at)
     # Logging is configured once in the main Typer app callback.
 
-    secrets_path = secrets_dir or default_secrets_dir()
+    secrets_path = default_secrets_dir()
+    log_dir = default_log_dir()
     backend_log_path = build_log_path(
-        log_dir=LOG_DIR,
+        log_dir=log_dir,
         prefix="backend",
         started_at=started_dt,
     )
     frontend_log_path = build_log_path(
-        log_dir=LOG_DIR,
+        log_dir=log_dir,
         prefix="frontend",
         started_at=started_dt,
     )
@@ -327,11 +336,20 @@ def link(
     frontend_proc: Optional[ManagedProcess] = None
 
     try:
+        try:
+            frontend_dir = _get_frontend_dir()
+        except FileNotFoundError as exc:
+            console.print("[red]Frontend not found[/]")
+            console.print(str(exc))
+            console.print(
+                "Looked for bundled build at 'yapcli/frontend/build/index.html'."
+            )
+            raise typer.Exit(code=1)
+
         logger.info(
-            "Launching Plaid Link (backend_port={}, frontend_port={}, serve_build={}, secrets_dir={})",
+            "Launching Plaid Link (backend_port={}, frontend_port={}, secrets_dir={})",
             backend_port,
             frontend_port,
-            serve_build,
             secrets_path,
         )
         console.print("[cyan]Starting Flask backend...[/]")
@@ -342,16 +360,21 @@ def link(
             products=products,
         )
         console.print(
-            f"[green]Backend running[/] on http://127.0.0.1:{backend_port}/api (log: {backend_log_path})"
+            f"[green]Backend running[/] on http://localhost:{backend_port}/api (log: {backend_log_path})"
         )
 
         console.print("[cyan]Starting frontend...[/]")
-        frontend_proc = start_frontend(frontend_port, serve_build, frontend_log_path)
+        frontend_proc = start_frontend(
+            frontend_port,
+            frontend_log_path,
+            frontend_dir=frontend_dir,
+            backend_port=backend_port,
+        )
         console.print(
-            f"[green]Frontend running[/] on http://127.0.0.1:{frontend_port}/ (log: {frontend_log_path})"
+            f"[green]Frontend running[/] on http://localhost:{frontend_port}/ (log: {frontend_log_path})"
         )
 
-        frontend_url = f"http://127.0.0.1:{frontend_port}/"
+        frontend_url = f"http://localhost:{frontend_port}/"
         if open_browser:
             webbrowser.open(frontend_url)
             console.print(f"Opened browser to {frontend_url}")

@@ -4,36 +4,90 @@ import datetime as dt
 import os
 import re
 from pathlib import Path
+from typing import Mapping, Optional
 
-from yapcli.institutions import (  # re-exported for backward compatibility
-    DiscoveredInstitution,
-    discover_institutions,
-    prompt_for_institutions,
-)
+from platformdirs import PlatformDirs
 
-__all__ = [
-    "DiscoveredInstitution",
-    "discover_institutions",
-    "prompt_for_institutions",
-    "safe_filename_component",
-    "default_data_dir",
-    "timestamp_for_filename",
-]
+_APP_NAME = "yapcli"
+_PLATFORM_DIRS = PlatformDirs(appname=_APP_NAME)
 
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+def _env_value(env: Optional[Mapping[str, str]], key: str) -> Optional[str]:
+    if env is None:
+        return os.getenv(key)
+    value = env.get(key)
+    return value
 
 
-def default_data_dir() -> Path:
-    """Default data directory.
+def _is_sandbox(env: Optional[Mapping[str, str]]) -> bool:
+    return (_env_value(env, "PLAID_ENV") or "").strip() == "sandbox"
 
-    Uses `sandbox/data` when PLAID_ENV=sandbox, otherwise `data`.
+
+def default_dirs_mode(env: Optional[Mapping[str, str]] = None) -> str:
+    """Return the default directory mode.
+
+    Controlled by YAPCLI_DEFAULT_DIRS:
+    - CWD: resolve config/secrets/logs relative to the current working directory
+    - PLATFORM_DIRS: resolve config/secrets/logs using platformdirs
+
+    Defaults to PLATFORM_DIRS.
     """
 
-    plaid_env = os.getenv("PLAID_ENV")
-    if plaid_env == "sandbox":
-        return _PROJECT_ROOT / "sandbox" / "data"
-    return _PROJECT_ROOT / "data"
+    raw = (_env_value(env, "YAPCLI_DEFAULT_DIRS") or "").strip().upper()
+    if raw in {"CWD"}:
+        return "CWD"
+    if raw in {"PLATFORM_DIRS", "PLATFORMDIRS", "PLATFORM"}:
+        return "PLATFORM_DIRS"
+    return "PLATFORM_DIRS"
+
+
+def default_config_dir(env: Optional[Mapping[str, str]] = None) -> Path:
+    if default_dirs_mode(env) == "CWD":
+        return Path.cwd()
+    return Path(_PLATFORM_DIRS.user_config_path)
+
+
+def default_log_dir(env: Optional[Mapping[str, str]] = None) -> Path:
+    override = _env_value(env, "YAPCLI_LOG_DIR")
+    if override:
+        return Path(override)
+
+    if default_dirs_mode(env) == "CWD":
+        if _is_sandbox(env):
+            return Path.cwd() / "sandbox" / "logs"
+        return Path.cwd() / "logs"
+
+    base = Path(_PLATFORM_DIRS.user_log_path)
+    if _is_sandbox(env):
+        return base / "sandbox"
+    return base
+
+
+def default_env_file_path(env: Optional[Mapping[str, str]] = None) -> Path:
+    """Path used for writing configuration via `yapcli config` commands."""
+
+    return default_config_dir(env) / ".env"
+
+
+def default_secrets_dir(env: Optional[Mapping[str, str]] = None) -> Path:
+    override = _env_value(env, "PLAID_SECRETS_DIR")
+    if override:
+        return Path(override)
+
+    base = default_config_dir(env)
+    if _is_sandbox(env):
+        return base / "sandbox" / "secrets"
+    return base / "secrets"
+
+
+def default_output_dir(env: Optional[Mapping[str, str]] = None) -> Path:
+    override = _env_value(env, "YAPCLI_OUTPUT_DIR")
+    if override:
+        return Path(override)
+
+    if _is_sandbox(env):
+        return Path.cwd() / "sandbox" / "output"
+    return Path.cwd() / "output"
 
 
 def timestamp_for_filename() -> str:
