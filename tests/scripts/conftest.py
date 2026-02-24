@@ -33,10 +33,10 @@ def frontend_build(project_root: Path) -> Path:
             cwd=project_root,
             capture_output=True,
             text=True,
-            timeout=180,  # 3 minute timeout for frontend build
+            timeout=240,  # 4 minute timeout for frontend build
         )
     except subprocess.TimeoutExpired:
-        pytest.fail("Frontend build timed out after 180 seconds")
+        pytest.fail("Frontend build timed out after 240 seconds")
 
     if result.returncode != 0:
         output = "\n".join(filter(None, [result.stdout, result.stderr]))

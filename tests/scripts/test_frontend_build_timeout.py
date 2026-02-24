@@ -15,9 +15,9 @@ def test_frontend_build_timeout_fails(monkeypatch: pytest.MonkeyPatch, tmp_path:
     (scripts_dir / "build_frontend.py").write_text("print('stub')", encoding="utf-8")
 
     def raise_timeout(*args: object, **kwargs: object) -> subprocess.CompletedProcess:
-        raise subprocess.TimeoutExpired(cmd=["python", "build_frontend.py"], timeout=180)
+        raise subprocess.TimeoutExpired(cmd=["python", "build_frontend.py"], timeout=240)
 
     monkeypatch.setattr(scripts_conftest.subprocess, "run", raise_timeout)
 
-    with pytest.raises(pytest.fail.Exception, match="timed out after 180 seconds"):
+    with pytest.raises(pytest.fail.Exception, match="timed out after 240 seconds"):
         scripts_conftest.frontend_build.__wrapped__(tmp_path)
