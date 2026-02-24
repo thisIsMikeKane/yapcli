@@ -85,7 +85,7 @@ jobs:
 
     - name: Check package contents
       run: |
-        tar -tzf dist/*.tar.gz | grep -E "^yapcli/frontend/build/" || (echo "Frontend not found in package" && exit 1)
+        tar -tzf dist/*.tar.gz | grep -E "^[^/]+/yapcli/frontend/build/" || (echo "Frontend not found in package" && exit 1)
 
     - name: Verify package metadata
       run: |
