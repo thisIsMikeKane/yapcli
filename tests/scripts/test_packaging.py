@@ -141,9 +141,9 @@ class TestInstalledPackage:
     """Test the behavior of the installed package."""
 
     @pytest.fixture(scope="class")
-    def venv_dir(self, tmp_path: Path) -> Path:
+    def venv_dir(self, tmp_path_factory: pytest.TempPathFactory) -> Path:
         """Create a temporary virtual environment."""
-        venv_path = tmp_path / "venv"
+        venv_path = tmp_path_factory.mktemp("test_venv") / "venv"
         result = subprocess.run(
             [sys.executable, "-m", "venv", str(venv_path)],
             capture_output=True,
