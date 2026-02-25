@@ -3,6 +3,8 @@ secrets/
 logs/
 data/
 sandbox/
+output/
+plaid_output/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
