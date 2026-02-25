@@ -82,10 +82,12 @@ def start_backend(
     log_path: Path,
     *,
     products: Optional[str] = None,
+    days_requested: int = 365,
 ) -> ManagedProcess:
     env = os.environ.copy()
     env["PORT"] = str(port)
     env["PLAID_SECRETS_DIR"] = str(secrets_dir)
+    env["YAPCLI_DAYS_REQUESTED"] = str(days_requested)
 
     log_file = log_path.open("w")
     try:
@@ -311,6 +313,16 @@ def link(
             "Example: --products=transactions,investments"
         ),
     ),
+    days_requested: int = typer.Option(
+        365,
+        "--days",
+        min=1,
+        help=(
+            "Days of historical transactions requested during Link token creation "
+            "(Plaid transactions.days_requested)."
+        ),
+        show_default=True,
+    ),
 ) -> None:
     """
     Launch Plaid Link locally and wait for user to complete the flow returning an item_id and access_token.
@@ -358,6 +370,7 @@ def link(
             secrets_path,
             backend_log_path,
             products=products,
+            days_requested=days_requested,
         )
         console.print(
             f"[green]Backend running[/] on http://localhost:{backend_port}/api (log: {backend_log_path})"

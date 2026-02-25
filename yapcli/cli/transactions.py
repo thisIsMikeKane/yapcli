@@ -134,7 +134,6 @@ def get_transactions_for_institution(
     institution_id: str,
     account_id: Optional[str] = None,
     cursor: Optional[str] = None,
-    days_requested: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Initialize PlaidBackend from secrets and return /transactions response dict."""
 
@@ -143,8 +142,6 @@ def get_transactions_for_institution(
     request_kwargs: Dict[str, Any] = {"account_id": account_id}
     if isinstance(cursor, str) and cursor.strip() != "":
         request_kwargs["cursor"] = cursor.strip()
-    if isinstance(days_requested, int):
-        request_kwargs["days_requested"] = days_requested
     return backend.get_transactions(**request_kwargs)
 
 
@@ -229,16 +226,6 @@ def get_transactions(
             "Looks in the account's output directory under --out-dir."
         ),
     ),
-    days_requested: Optional[int] = typer.Option(
-        None,
-        "--days",
-        "--days_requested",
-        min=1,
-        help=(
-            "Number of days of historical transactions to request for transactions/sync "
-            "(Plaid days_requested option)."
-        ),
-    ),
 ) -> None:
     """Fetch transactions for one or more accounts and write CSV(s)."""
 
@@ -287,7 +274,6 @@ def get_transactions(
                 institution_id=account.institution_id,
                 account_id=account.account_id,
                 cursor=effective_cursor,
-                days_requested=days_requested,
             )
         except (FileNotFoundError, ValueError) as exc:
             payload = {"error": str(exc)}

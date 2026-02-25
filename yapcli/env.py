@@ -5,12 +5,33 @@ from pathlib import Path
 from typing import Dict, Iterable
 
 from dotenv import dotenv_values
+from loguru import logger
 from platformdirs import PlatformDirs
 
 _APP_NAME = "yapcli"
 _PLATFORM_DIRS = PlatformDirs(appname=_APP_NAME)
 
 _LOADED_ENV_FILES: list[Path] = []
+
+# All environment variables consumed by yapcli at runtime.
+# Keep this list as the single source of truth for config key ordering and
+# validation in CLI config commands.
+CONSUMED_ENV_VARS: tuple[str, ...] = (
+    "PLAID_CLIENT_ID",
+    "PLAID_ENV",
+    "PLAID_SANDBOX_SECRET",
+    "PLAID_PRODUCTION_SECRET",
+    "PLAID_SECRET",
+    "PLAID_COUNTRY_CODES",
+    "PLAID_SECRETS_DIR",
+    "YAPCLI_DEFAULT_DIRS",
+    "YAPCLI_LOG_DIR",
+    "YAPCLI_OUTPUT_DIR",
+    "YAPCLI_LOG_LEVEL",
+    "YAPCLI_PLAID_TIMEOUT_SECONDS",
+    "YAPCLI_DAYS_REQUESTED",
+)
+_CONSUMED_ENV_VARS_SET = set(CONSUMED_ENV_VARS)
 
 
 def cwd_env_file_path() -> Path:
@@ -26,7 +47,7 @@ def _apply_env_values(
     *,
     preserve_keys: set[str],
     allow_override: bool,
-) -> tuple[int, int, int, int]:
+) -> tuple[int, int, int, int, int]:
     """Apply values to os.environ.
 
     Behavior:
@@ -34,15 +55,24 @@ def _apply_env_values(
     - If allow_override=True, keys not in preserve_keys may override existing values.
 
     Returns:
-        (applied_new, overridden_existing, skipped_preserved, skipped_existing)
+        (applied_new, overridden_existing, skipped_preserved, skipped_existing, skipped_unrecognized)
     """
 
     applied_new = 0
     overridden_existing = 0
     skipped_preserved = 0
     skipped_existing = 0
+    skipped_unrecognized = 0
 
     for key, value in values.items():
+        if key not in _CONSUMED_ENV_VARS_SET:
+            skipped_unrecognized += 1
+            logger.warning(
+                "Skipping unrecognized env var from .env load: {}",
+                key,
+            )
+            continue
+
         if key in preserve_keys:
             skipped_preserved += 1
             continue
@@ -58,7 +88,13 @@ def _apply_env_values(
         os.environ[key] = value
         applied_new += 1
 
-    return applied_new, overridden_existing, skipped_preserved, skipped_existing
+    return (
+        applied_new,
+        overridden_existing,
+        skipped_preserved,
+        skipped_existing,
+        skipped_unrecognized,
+    )
 
 
 def _read_env_file(path: Path) -> Dict[str, str]:
@@ -90,19 +126,23 @@ def load_env_files() -> Iterable[Path]:
     # Apply lowest-precedence first.
     platform_values = _read_env_file(platform_path)
     if platform_values:
-        applied_new, overridden, preserved, skipped_existing = _apply_env_values(
-            platform_values,
-            preserve_keys=baseline_keys,
-            allow_override=False,
+        applied_new, overridden, preserved, skipped_existing, skipped_unrecognized = (
+            _apply_env_values(
+                platform_values,
+                preserve_keys=baseline_keys,
+                allow_override=False,
+            )
         )
         _LOADED_ENV_FILES.append(platform_path)
 
     cwd_values = _read_env_file(cwd_path)
     if cwd_values:
-        applied_new, overridden, preserved, skipped_existing = _apply_env_values(
-            cwd_values,
-            preserve_keys=baseline_keys,
-            allow_override=True,
+        applied_new, overridden, preserved, skipped_existing, skipped_unrecognized = (
+            _apply_env_values(
+                cwd_values,
+                preserve_keys=baseline_keys,
+                allow_override=True,
+            )
         )
         _LOADED_ENV_FILES.append(cwd_path)
 

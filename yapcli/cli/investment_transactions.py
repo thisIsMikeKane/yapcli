@@ -131,9 +131,7 @@ def get_investment_transactions(
         try:
             parsed_end_date = dt.date.fromisoformat(end_date)
         except ValueError as exc:
-            raise typer.BadParameter(
-                "--end_date must be in YYYY-MM-DD format"
-            ) from exc
+            raise typer.BadParameter("--end_date must be in YYYY-MM-DD format") from exc
 
     if (
         parsed_start_date is not None

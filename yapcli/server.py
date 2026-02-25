@@ -38,6 +38,7 @@ from plaid.api import plaid_api
 from yapcli.utils import default_secrets_dir
 
 DEFAULT_PLAID_REDIRECT_URI = ""
+DEFAULT_LINK_DAYS_REQUESTED = 365
 
 
 def _empty_to_none(env: Dict[str, str], field: str) -> Optional[str]:
@@ -77,6 +78,32 @@ def _resolve_plaid_env_and_secret(env: Dict[str, str]) -> tuple[str, Optional[st
     if plaid_env == "production":
         return plaid_env, production_secret
     return plaid_env, sandbox_secret
+
+
+def _resolve_link_days_requested(env: Dict[str, str]) -> int:
+    raw = env.get("YAPCLI_DAYS_REQUESTED")
+    if raw is None or str(raw).strip() == "":
+        return DEFAULT_LINK_DAYS_REQUESTED
+
+    try:
+        days = int(str(raw).strip())
+    except ValueError:
+        logger.warning(
+            "Invalid YAPCLI_DAYS_REQUESTED={!r}; using default {}",
+            raw,
+            DEFAULT_LINK_DAYS_REQUESTED,
+        )
+        return DEFAULT_LINK_DAYS_REQUESTED
+
+    if days < 1:
+        logger.warning(
+            "Invalid YAPCLI_DAYS_REQUESTED={!r}; must be >= 1, using default {}",
+            raw,
+            DEFAULT_LINK_DAYS_REQUESTED,
+        )
+        return DEFAULT_LINK_DAYS_REQUESTED
+
+    return days
 
 
 class PlaidBackend:
@@ -247,6 +274,11 @@ class PlaidBackend:
                 user=LinkTokenCreateRequestUser(client_user_id=str(time.time())),
             )
 
+            if "transactions" in self.plaid_products:
+                link_request["transactions"] = {
+                    "days_requested": _resolve_link_days_requested(self._env)
+                }
+
             if self.plaid_redirect_uri.strip() != "":
                 link_request["redirect_uri"] = self.plaid_redirect_uri
 
@@ -296,7 +328,6 @@ class PlaidBackend:
         *,
         account_id: Optional[str] = None,
         cursor: Optional[str] = None,
-        days_requested: Optional[int] = None,
     ) -> Dict[str, Any]:
         cursor = cursor or ""
         added: List[Dict[str, Any]] = []
@@ -322,15 +353,10 @@ class PlaidBackend:
                     len(removed),
                 )
                 options = None
-                if account_id or days_requested is not None:
+                if account_id:
                     # Prefer server-side filtering so we don't fetch the entire item's
                     # transactions only to filter locally.
-                    options_kwargs: Dict[str, Any] = {}
-                    if account_id:
-                        options_kwargs["account_id"] = account_id
-                    if days_requested is not None:
-                        options_kwargs["days_requested"] = days_requested
-                    options = TransactionsSyncRequestOptions(**options_kwargs)
+                    options = TransactionsSyncRequestOptions(account_id=account_id)
 
                 sync_request = TransactionsSyncRequest(
                     access_token=self.access_token,
