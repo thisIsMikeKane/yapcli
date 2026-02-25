@@ -33,8 +33,6 @@ pipx install yapcli
 yapcli --help
 ```
 
-## Usage
-
 ### Configure Plaid credentials
 
 Use the `config` commands to create and manage your `yapcli` `.env` file:
@@ -43,17 +41,13 @@ Use the `config` commands to create and manage your `yapcli` `.env` file:
 # Show loaded .env paths and default directories
 yapcli config paths
 
-# Interactive setup (prompts for core values)
+# Interactive setup (prompts for required values)
 yapcli config init
-
-# Set/update a single key
-yapcli config set PLAID_CLIENT_ID your_client_id
-yapcli config set PLAID_ENV sandbox
 ```
 
-`yapcli` loads this default `.env` file on package import.
+#### Configuration precedence
 
-### Configuration precedence (highest to lowest)
+`yapcli` loads this default `.env` file on package import. The following describes how different `.env` files, environment variables, and command options take precedence  (highest to lowest).
 
 1. Command-line arguments/options
 2. Environment variables already set in your shell/session
@@ -65,6 +59,13 @@ Examples:
 - `yapcli --production ...` overrides `PLAID_ENV` from both shell env and `.env`
 - Exporting `PLAID_ENV=sandbox` in your shell overrides `PLAID_ENV` in `.env`
 - `.env` values are used as defaults when neither CLI options nor shell env provide a value
+
+#### Overrides
+
+- Pass `--out-dir` on export commands to explicitly choose output location
+- Set `PLAID_SECRETS_DIR` to override secrets location globally
+- Set `YAPCLI_LOG_DIR` to override log directory globally
+- Set `YAPCLI_OUTPUT_DIR` to override the default output directory globally
 
 ### Link a Plaid account
 
@@ -105,20 +106,9 @@ yapcli balances --help
   - `./output` (production)
   - `./sandbox/output` (sandbox)
 
-### Overrides
-
-- Pass `--out-dir` on export commands to explicitly choose output location
-- Set `PLAID_SECRETS_DIR` to override secrets location globally
-- Set `YAPCLI_LOG_DIR` to override log directory globally
-- Set `YAPCLI_OUTPUT_DIR` to override the default output directory globally
-
 ## Development environment
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow.
-
-## Project scripts
-
-The CLI entry point is defined in `pyproject.toml` under `[project.scripts]` as `yapcli = "yapcli.cli.main:main"`. When installed via pipx or pip, the `yapcli` command becomes available in your PATH.
 
 ## Related works
 
