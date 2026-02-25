@@ -135,10 +135,12 @@ def test_start_backend_passes_products_arg(
         secrets_dir=secrets_dir,
         log_path=log_path,
         products="transactions,investments",
+        days_requested=180,
     )
 
     try:
         assert "PLAID_PRODUCTS" not in captured_env
+        assert captured_env.get("YAPCLI_DAYS_REQUESTED") == "180"
         assert captured_cmd == [
             link.sys.executable,
             "-m",
@@ -156,11 +158,18 @@ def test_start_backend_passes_products_arg(
 def test_link_defaults_to_sandbox_secrets_dir(monkeypatch: pytest.MonkeyPatch) -> None:
     runner = CliRunner()
     seen: dict[str, Path] = {}
+    seen_days: dict[str, int] = {}
 
     def fake_start_backend(
-        port: int, secrets_dir: Path, log_path: Path, *, products=None
+        port: int,
+        secrets_dir: Path,
+        log_path: Path,
+        *,
+        products=None,
+        days_requested: int = 365,
     ):
         seen["secrets_dir"] = secrets_dir
+        seen_days["value"] = days_requested
         return None
 
     monkeypatch.setattr(link, "start_backend", fake_start_backend)
@@ -189,6 +198,48 @@ def test_link_defaults_to_sandbox_secrets_dir(monkeypatch: pytest.MonkeyPatch) -
         f"Exception: {result.exception!r}"
     )
     assert seen["secrets_dir"] == link.default_secrets_dir()
+    assert seen_days["value"] == 365
+
+
+def test_link_passes_custom_days_requested(monkeypatch: pytest.MonkeyPatch) -> None:
+    runner = CliRunner()
+    seen_days: dict[str, int] = {}
+
+    def fake_start_backend(
+        port: int,
+        secrets_dir: Path,
+        log_path: Path,
+        *,
+        products=None,
+        days_requested: int = 365,
+    ):
+        seen_days["value"] = days_requested
+        return None
+
+    monkeypatch.setattr(link, "start_backend", fake_start_backend)
+    monkeypatch.setattr(link, "start_frontend", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        link,
+        "wait_for_credentials",
+        lambda **kwargs: ("ins_1", "item-1", "access-1"),
+    )
+    monkeypatch.setattr(link, "terminate_process", lambda *args, **kwargs: None)
+
+    result = runner.invoke(
+        root_cli.app,
+        [
+            "--sandbox",
+            "link",
+            "--days",
+            "120",
+            "--no-open-browser",
+            "--timeout",
+            "1",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert seen_days["value"] == 120
 
 
 def test_link_rejects_invalid_products(monkeypatch: pytest.MonkeyPatch) -> None:

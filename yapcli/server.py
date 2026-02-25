@@ -38,6 +38,7 @@ from plaid.api import plaid_api
 from yapcli.utils import default_secrets_dir
 
 DEFAULT_PLAID_REDIRECT_URI = ""
+DEFAULT_LINK_DAYS_REQUESTED = 365
 
 
 def _empty_to_none(env: Dict[str, str], field: str) -> Optional[str]:
@@ -77,6 +78,32 @@ def _resolve_plaid_env_and_secret(env: Dict[str, str]) -> tuple[str, Optional[st
     if plaid_env == "production":
         return plaid_env, production_secret
     return plaid_env, sandbox_secret
+
+
+def _resolve_link_days_requested(env: Dict[str, str]) -> int:
+    raw = env.get("YAPCLI_DAYS_REQUESTED")
+    if raw is None or str(raw).strip() == "":
+        return DEFAULT_LINK_DAYS_REQUESTED
+
+    try:
+        days = int(str(raw).strip())
+    except ValueError:
+        logger.warning(
+            "Invalid YAPCLI_DAYS_REQUESTED={!r}; using default {}",
+            raw,
+            DEFAULT_LINK_DAYS_REQUESTED,
+        )
+        return DEFAULT_LINK_DAYS_REQUESTED
+
+    if days < 1:
+        logger.warning(
+            "Invalid YAPCLI_DAYS_REQUESTED={!r}; must be >= 1, using default {}",
+            raw,
+            DEFAULT_LINK_DAYS_REQUESTED,
+        )
+        return DEFAULT_LINK_DAYS_REQUESTED
+
+    return days
 
 
 class PlaidBackend:
@@ -246,6 +273,11 @@ class PlaidBackend:
                 language="en",
                 user=LinkTokenCreateRequestUser(client_user_id=str(time.time())),
             )
+
+            if "transactions" in self.plaid_products:
+                link_request["transactions"] = {
+                    "days_requested": _resolve_link_days_requested(self._env)
+                }
 
             if self.plaid_redirect_uri.strip() != "":
                 link_request["redirect_uri"] = self.plaid_redirect_uri
@@ -452,15 +484,24 @@ class PlaidBackend:
         except plaid.ApiException as exc:
             return self.format_error(exc)
 
-    def get_investments_transactions(self) -> Dict[str, Any]:
-        start_date = dt.datetime.now() - dt.timedelta(days=30)
-        end_date = dt.datetime.now()
+    def get_investments_transactions(
+        self,
+        *,
+        start_date: Optional[dt.date] = None,
+        end_date: Optional[dt.date] = None,
+    ) -> Dict[str, Any]:
+        effective_start_date = start_date
+        effective_end_date = end_date
+        if effective_start_date is None:
+            effective_start_date = (dt.datetime.now() - dt.timedelta(days=30)).date()
+        if effective_end_date is None:
+            effective_end_date = dt.datetime.now().date()
         try:
             options = InvestmentsTransactionsGetRequestOptions()
             investments_request = InvestmentsTransactionsGetRequest(
                 access_token=self.access_token,
-                start_date=start_date.date(),
-                end_date=end_date.date(),
+                start_date=effective_start_date,
+                end_date=effective_end_date,
                 options=options,
             )
             response = self.client.investments_transactions_get(

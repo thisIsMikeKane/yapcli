@@ -55,6 +55,65 @@ def test_config_set_writes_value_to_env_file(
     assert "PLAID_CLIENT_ID=client-123" in contents
 
 
+def test_config_set_rejects_unknown_key(
+    monkeypatch: pytest.MonkeyPatch,
+    runner: CliRunner,
+    tmp_path: Path,
+) -> None:
+    env_path = tmp_path / ".env"
+
+    import yapcli.cli.config as config_cli
+
+    monkeypatch.setattr(config_cli, "default_env_file_path", lambda: env_path)
+
+    result = runner.invoke(
+        cli.app,
+        ["config", "set", "UNKNOWN_VAR", "value"],
+    )
+
+    assert result.exit_code != 0
+    assert "Unknown key" in result.output
+
+
+def test_config_set_interactive_selects_key_and_prompts_value(
+    monkeypatch: pytest.MonkeyPatch,
+    runner: CliRunner,
+    tmp_path: Path,
+) -> None:
+    env_path = tmp_path / ".env"
+
+    import yapcli.cli.config as config_cli
+
+    monkeypatch.setattr(config_cli, "default_env_file_path", lambda: env_path)
+
+    class _Prompt:
+        def __init__(self, value):
+            self._value = value
+
+        def ask(self):
+            return self._value
+
+    monkeypatch.setattr(
+        config_cli.questionary,
+        "select",
+        lambda *_args, **_kwargs: _Prompt("PLAID_CLIENT_ID"),
+    )
+    monkeypatch.setattr(
+        config_cli.questionary,
+        "text",
+        lambda *_args, **_kwargs: _Prompt("client-interactive"),
+    )
+
+    result = runner.invoke(
+        cli.app,
+        ["config", "set", "--interactive"],
+    )
+
+    assert result.exit_code == 0
+    contents = env_path.read_text()
+    assert "PLAID_CLIENT_ID=client-interactive" in contents
+
+
 def test_config_init_writes_prompted_values(
     monkeypatch: pytest.MonkeyPatch,
     runner: CliRunner,
@@ -66,20 +125,31 @@ def test_config_init_writes_prompted_values(
 
     monkeypatch.setattr(config_cli, "default_env_file_path", lambda: env_path)
 
-    prompts = iter(
-        [
-            "client-id",
-            "sandbox",
-            "US,CA",
-            "sandbox-secret",
-            "production-secret",
-        ]
+    class _Prompt:
+        def __init__(self, value):
+            self._value = value
+
+        def ask(self):
+            return self._value
+
+    text_prompts = iter(["client-id", "sandbox", "US,CA"])
+    password_prompts = iter(["sandbox-secret", "production-secret"])
+
+    monkeypatch.setattr(
+        config_cli.questionary,
+        "text",
+        lambda *_args, **_kwargs: _Prompt(next(text_prompts)),
     )
-
-    def fake_prompt(*_args, **_kwargs):
-        return next(prompts)
-
-    monkeypatch.setattr(config_cli.typer, "prompt", fake_prompt)
+    monkeypatch.setattr(
+        config_cli.questionary,
+        "password",
+        lambda *_args, **_kwargs: _Prompt(next(password_prompts)),
+    )
+    monkeypatch.setattr(
+        config_cli.questionary,
+        "confirm",
+        lambda *_args, **_kwargs: _Prompt(True),
+    )
 
     result = runner.invoke(cli.app, ["config", "init"])
 

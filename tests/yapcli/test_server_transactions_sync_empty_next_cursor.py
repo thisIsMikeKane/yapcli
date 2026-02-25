@@ -20,7 +20,7 @@ class _FakePlaidClient:
         self._pages = pages
         self.calls = 0
 
-    def transactions_sync(self, *_args: Any, **_kwargs: Any) -> _FakePlaidResponse:
+    def transactions_sync(self, *args: Any, **_kwargs: Any) -> _FakePlaidResponse:
         self.calls += 1
         idx = min(self.calls - 1, len(self._pages) - 1)
         return _FakePlaidResponse(self._pages[idx])
