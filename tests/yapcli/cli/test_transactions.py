@@ -986,3 +986,175 @@ def test_transactions_sync_with_no_existing_meta_runs_without_cursor(
 
     assert result.exit_code == 0
     assert seen["cursor"] is None
+
+
+def test_transactions_days_option_passes_days_requested_to_backend(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    runner = CliRunner()
+
+    secrets_dir = tmp_path / "secrets"
+    secrets_dir.mkdir()
+    (secrets_dir / "ins_1_item_id").write_text("item-1")
+    (secrets_dir / "ins_1_access_token").write_text("access-1")
+
+    seen: dict[str, int | None] = {"days_requested": None}
+
+    class FakeBackend:
+        def __init__(
+            self,
+            *,
+            access_token: str | None = None,
+            item_id: str | None = None,
+            env=None,
+        ) -> None:
+            self.access_token = access_token
+            self.item_id = item_id
+
+        def get_accounts(self) -> Dict[str, Any]:
+            return {
+                "accounts": [
+                    {
+                        "account_id": "acct-access-1",
+                        "type": "depository",
+                        "name": "Checking",
+                        "subtype": "checking",
+                        "mask": "0000",
+                    }
+                ]
+            }
+
+        def get_transactions(
+            self,
+            *,
+            account_id: str | None = None,
+            cursor: str | None = None,
+            days_requested: int | None = None,
+        ) -> Dict[str, Any]:
+            seen["days_requested"] = days_requested
+            return {
+                "transactions": [],
+                "cursor": cursor or "",
+            }
+
+        def get_item(self) -> Dict[str, Any]:
+            return {"error": None, "item": {}, "institution": {"name": "Test Bank"}}
+
+    import yapcli.cli.transactions as transactions
+    import yapcli.accounts as accounts
+    import yapcli.institutions as institutions
+
+    monkeypatch.setattr(transactions, "PlaidBackend", FakeBackend)
+    monkeypatch.setattr(accounts, "PlaidBackend", FakeBackend)
+    monkeypatch.setattr(institutions, "PlaidBackend", FakeBackend)
+
+    monkeypatch.setattr(
+        questionary,
+        "checkbox",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("questionary.checkbox should not be called")
+        ),
+    )
+
+    monkeypatch.setenv("PLAID_SECRETS_DIR", str(secrets_dir))
+
+    result = runner.invoke(
+        cli.app,
+        [
+            "transactions",
+            "acct-access-1",
+            "--days",
+            "45",
+            "--out-dir",
+            str(tmp_path / "out"),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert seen["days_requested"] == 45
+
+
+def test_transactions_days_requested_alias_passes_days_requested_to_backend(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    runner = CliRunner()
+
+    secrets_dir = tmp_path / "secrets"
+    secrets_dir.mkdir()
+    (secrets_dir / "ins_1_item_id").write_text("item-1")
+    (secrets_dir / "ins_1_access_token").write_text("access-1")
+
+    seen: dict[str, int | None] = {"days_requested": None}
+
+    class FakeBackend:
+        def __init__(
+            self,
+            *,
+            access_token: str | None = None,
+            item_id: str | None = None,
+            env=None,
+        ) -> None:
+            self.access_token = access_token
+            self.item_id = item_id
+
+        def get_accounts(self) -> Dict[str, Any]:
+            return {
+                "accounts": [
+                    {
+                        "account_id": "acct-access-1",
+                        "type": "depository",
+                        "name": "Checking",
+                        "subtype": "checking",
+                        "mask": "0000",
+                    }
+                ]
+            }
+
+        def get_transactions(
+            self,
+            *,
+            account_id: str | None = None,
+            cursor: str | None = None,
+            days_requested: int | None = None,
+        ) -> Dict[str, Any]:
+            seen["days_requested"] = days_requested
+            return {
+                "transactions": [],
+                "cursor": cursor or "",
+            }
+
+        def get_item(self) -> Dict[str, Any]:
+            return {"error": None, "item": {}, "institution": {"name": "Test Bank"}}
+
+    import yapcli.cli.transactions as transactions
+    import yapcli.accounts as accounts
+    import yapcli.institutions as institutions
+
+    monkeypatch.setattr(transactions, "PlaidBackend", FakeBackend)
+    monkeypatch.setattr(accounts, "PlaidBackend", FakeBackend)
+    monkeypatch.setattr(institutions, "PlaidBackend", FakeBackend)
+
+    monkeypatch.setattr(
+        questionary,
+        "checkbox",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("questionary.checkbox should not be called")
+        ),
+    )
+
+    monkeypatch.setenv("PLAID_SECRETS_DIR", str(secrets_dir))
+
+    result = runner.invoke(
+        cli.app,
+        [
+            "transactions",
+            "acct-access-1",
+            "--days_requested",
+            "7",
+            "--out-dir",
+            str(tmp_path / "out"),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert seen["days_requested"] == 7

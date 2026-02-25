@@ -296,6 +296,7 @@ class PlaidBackend:
         *,
         account_id: Optional[str] = None,
         cursor: Optional[str] = None,
+        days_requested: Optional[int] = None,
     ) -> Dict[str, Any]:
         cursor = cursor or ""
         added: List[Dict[str, Any]] = []
@@ -321,10 +322,15 @@ class PlaidBackend:
                     len(removed),
                 )
                 options = None
-                if account_id:
+                if account_id or days_requested is not None:
                     # Prefer server-side filtering so we don't fetch the entire item's
                     # transactions only to filter locally.
-                    options = TransactionsSyncRequestOptions(account_id=account_id)
+                    options_kwargs: Dict[str, Any] = {}
+                    if account_id:
+                        options_kwargs["account_id"] = account_id
+                    if days_requested is not None:
+                        options_kwargs["days_requested"] = days_requested
+                    options = TransactionsSyncRequestOptions(**options_kwargs)
 
                 sync_request = TransactionsSyncRequest(
                     access_token=self.access_token,
@@ -452,15 +458,24 @@ class PlaidBackend:
         except plaid.ApiException as exc:
             return self.format_error(exc)
 
-    def get_investments_transactions(self) -> Dict[str, Any]:
-        start_date = dt.datetime.now() - dt.timedelta(days=30)
-        end_date = dt.datetime.now()
+    def get_investments_transactions(
+        self,
+        *,
+        start_date: Optional[dt.date] = None,
+        end_date: Optional[dt.date] = None,
+    ) -> Dict[str, Any]:
+        effective_start_date = start_date
+        effective_end_date = end_date
+        if effective_start_date is None:
+            effective_start_date = (dt.datetime.now() - dt.timedelta(days=30)).date()
+        if effective_end_date is None:
+            effective_end_date = dt.datetime.now().date()
         try:
             options = InvestmentsTransactionsGetRequestOptions()
             investments_request = InvestmentsTransactionsGetRequest(
                 access_token=self.access_token,
-                start_date=start_date.date(),
-                end_date=end_date.date(),
+                start_date=effective_start_date,
+                end_date=effective_end_date,
                 options=options,
             )
             response = self.client.investments_transactions_get(

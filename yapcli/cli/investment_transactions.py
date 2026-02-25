@@ -1,4 +1,5 @@
 from __future__ import annotations
+import datetime as dt
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -21,12 +22,19 @@ app = typer.Typer(help="Fetch investment transactions for one or more accounts."
 def get_investments_transactions_for_institution(
     *,
     institution_id: str,
+    start_date: Optional[dt.date] = None,
+    end_date: Optional[dt.date] = None,
 ) -> Dict[str, Any]:
     """Initialize PlaidBackend from secrets and return /investments_transactions response dict."""
 
     item_id, access_token = load_credentials(institution_id=institution_id)
     backend = PlaidBackend(access_token=access_token, item_id=item_id)
-    return backend.get_investments_transactions()
+    request_kwargs: Dict[str, Any] = {}
+    if start_date is not None:
+        request_kwargs["start_date"] = start_date
+    if end_date is not None:
+        request_kwargs["end_date"] = end_date
+    return backend.get_investments_transactions(**request_kwargs)
 
 
 def _payload_to_dataframe(
@@ -95,10 +103,44 @@ def get_investment_transactions(
         file_okay=False,
         dir_okay=True,
     ),
+    start_date: Optional[str] = typer.Option(
+        None,
+        "--start_date",
+        help="Start date for investment transactions (YYYY-MM-DD).",
+    ),
+    end_date: Optional[str] = typer.Option(
+        None,
+        "--end_date",
+        help="End date for investment transactions (YYYY-MM-DD).",
+    ),
 ) -> None:
     """Fetch investment transactions for one or more eligible accounts and write CSV(s)."""
 
     secrets_path = default_secrets_dir()
+
+    parsed_start_date: Optional[dt.date] = None
+    parsed_end_date: Optional[dt.date] = None
+    if isinstance(start_date, str):
+        try:
+            parsed_start_date = dt.date.fromisoformat(start_date)
+        except ValueError as exc:
+            raise typer.BadParameter(
+                "--start_date must be in YYYY-MM-DD format"
+            ) from exc
+    if isinstance(end_date, str):
+        try:
+            parsed_end_date = dt.date.fromisoformat(end_date)
+        except ValueError as exc:
+            raise typer.BadParameter(
+                "--end_date must be in YYYY-MM-DD format"
+            ) from exc
+
+    if (
+        parsed_start_date is not None
+        and parsed_end_date is not None
+        and parsed_start_date > parsed_end_date
+    ):
+        raise typer.BadParameter("--start_date cannot be after --end_date")
 
     selected_accounts = resolve_target_accounts(
         ids=ids,
@@ -119,6 +161,8 @@ def get_investment_transactions(
                 payload_by_institution[account.institution_id] = (
                     get_investments_transactions_for_institution(
                         institution_id=account.institution_id,
+                        start_date=parsed_start_date,
+                        end_date=parsed_end_date,
                     )
                 )
             except (FileNotFoundError, ValueError) as exc:
