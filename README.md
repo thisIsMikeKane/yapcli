@@ -17,7 +17,7 @@ A CLI for exporting Plaid API requests to plain text for importing into accounti
 
 ### Plaid developer credentials
 
-[ ] TODO explain how to get Plaid developer credentials
+- [ ] TODO explain how to get Plaid developer credentials
 
 ### Dependencies
 
