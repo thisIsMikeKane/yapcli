@@ -64,3 +64,37 @@ def test_create_link_token_uses_env_days_requested_override() -> None:
     transactions = fake_client.requests[0].get("transactions")
     assert isinstance(transactions, dict)
     assert transactions.get("days_requested") == 90
+
+
+def test_create_link_token_ignores_env_days_requested_out_of_range(caplog) -> None:
+    # values outside the Plaid-specified bounds should be replaced by the default
+    from yapcli.server import (
+        DEFAULT_LINK_DAYS_REQUESTED,
+        MIN_LINK_DAYS_REQUESTED,
+        MAX_LINK_DAYS_REQUESTED,
+    )
+
+    for raw_val in ("0", str(MAX_LINK_DAYS_REQUESTED + 1)):
+        caplog.clear()
+        caplog.set_level("WARNING")
+
+        backend = PlaidBackend(
+            env={
+                "PLAID_CLIENT_ID": "client",
+                "PLAID_SECRET": "secret",
+                "PLAID_ENV": "sandbox",
+                "PLAID_COUNTRY_CODES": "US",
+                "YAPCLI_DAYS_REQUESTED": raw_val,
+            },
+            products=["transactions"],
+        )
+        fake_client = _FakePlaidClient()
+        backend.client = fake_client  # type: ignore[assignment]
+
+        backend.create_link_token()
+
+        assert len(fake_client.requests) == 1
+        transactions = fake_client.requests[0].get("transactions")
+        assert isinstance(transactions, dict)
+        assert transactions.get("days_requested") == DEFAULT_LINK_DAYS_REQUESTED
+

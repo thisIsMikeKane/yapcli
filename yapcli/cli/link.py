@@ -17,6 +17,7 @@ from rich.console import Console
 
 from yapcli.logging import build_log_path
 from yapcli.utils import default_log_dir, default_secrets_dir
+from yapcli.server import MIN_LINK_DAYS_REQUESTED, MAX_LINK_DAYS_REQUESTED
 
 console = Console()
 app = typer.Typer(help="Run Plaid Link locally and capture the resulting tokens.")
@@ -316,10 +317,12 @@ def link(
     days_requested: int = typer.Option(
         365,
         "--days",
-        min=1,
+        min=MIN_LINK_DAYS_REQUESTED,
+        max=MAX_LINK_DAYS_REQUESTED,
         help=(
             "Days of historical transactions requested during Link token creation "
-            "(Plaid transactions.days_requested)."
+            "(Plaid transactions.days_requested; valid range "
+            f"{MIN_LINK_DAYS_REQUESTED}-{MAX_LINK_DAYS_REQUESTED})."
         ),
         show_default=True,
     ),
