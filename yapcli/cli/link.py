@@ -365,9 +365,7 @@ def link(
 
     clear_mode_count = int(clear) + int(bool(clear_ins)) + int(clear_all)
     if clear_mode_count > 1:
-        raise typer.BadParameter(
-            "Use only one of --clear, --clear_ins, or --clear-all"
-        )
+        raise typer.BadParameter("Use only one of --clear, --clear_ins, or --clear-all")
 
     if clear_mode_count == 1 and any(
         [
@@ -412,9 +410,7 @@ def link(
             except ValueError as exc:
                 raise typer.BadParameter(str(exc)) from exc
         else:
-            raise typer.BadParameter(
-                "Use one of --clear, --clear_ins, or --clear-all"
-            )
+            raise typer.BadParameter("Use one of --clear, --clear_ins, or --clear-all")
 
         total_removed = 0
         for selected_id in selected_ids:

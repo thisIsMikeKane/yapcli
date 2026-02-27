@@ -360,7 +360,6 @@ def test_link_clear_interactive_uses_questionary_and_item_id(
         assert not (secrets / "ins_0000_item_id").exists()
 
 
-
 def test_link_clear_rejects_multiple_clear_modes() -> None:
     runner = CliRunner()
 
@@ -371,6 +370,7 @@ def test_link_clear_rejects_multiple_clear_modes() -> None:
 
     assert result.exit_code != 0
     assert "Use only one of --clear, --clear_ins, or --clear-all" in result.output
+
 
 def test_link_clear_rejects_link_options(monkeypatch: pytest.MonkeyPatch) -> None:
     runner = CliRunner()
