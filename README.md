@@ -45,9 +45,21 @@ yapcli config paths
 yapcli config init
 ```
 
+#### Default paths
+
+`yapcli` resolves default directories using [platform directories](https://platformdirs.readthedocs.io/en/latest/explanation.html#config-directories) (unless you override them with command options or environment variables):
+
+- `YAPCLI_DEFAULT_DIRS` controls the default location for **config**, **secrets**, and **logs**:
+  - `CWD`: use the current working directory (e.g. `./secrets`, `./logs`, `./.env`)
+  - `PLATFORMDIRS`: use platform-native locations via `platformdirs` (e.g. `~/.config/yapcli` on Linux)
+- `PLAID_ENV=sandbox` adds a `sandbox/` subdirectory for secrets/logs/exports.
+- Export **output** defaults to the current working directory:
+  - `./output` (production)
+  - `./sandbox/output` (sandbox)
+
 #### Configuration precedence
 
-`yapcli` loads this default `.env` file on package import. The following describes how different `.env` files, environment variables, and command options take precedence  (highest to lowest).
+`yapcli` loads this default `.env` file on package import. The following describes how different `.env` files, environment variables, and command options take precedence (highest to lowest).
 
 1. Command-line arguments/options
 2. Environment variables already set in your shell/session
@@ -94,25 +106,9 @@ yapcli transactions --help
 yapcli balances --help
 ```
 
-## Default paths
-
-`yapcli` resolves default directories using [platform directories](https://platformdirs.readthedocs.io/en/latest/explanation.html#config-directories) (unless you override them with command options or environment variables):
-
-- `YAPCLI_DEFAULT_DIRS` controls the default location for **config**, **secrets**, and **logs**:
-  - `CWD`: use the current working directory (e.g. `./secrets`, `./logs`, `./.env`)
-  - `PLATFORMDIRS`: use platform-native locations via `platformdirs` (e.g. `~/.config/yapcli` on Linux)
-- `PLAID_ENV=sandbox` adds a `sandbox/` subdirectory for secrets/logs/exports.
-- Export **output** defaults to the current working directory:
-  - `./output` (production)
-  - `./sandbox/output` (sandbox)
-
-## Development environment
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow.
-
 ## Related works
 
-This project was motivated by the features and shortcomings of these other packages (information as of 2/25/2026)
+The features and limitations of these related projects inspired yapcli. Information below as of 2/26/2026.
 
 | Project                                                                                     | Lang          | Last commit | Stars | Forks | Open issues | Open PRs | Status                         | Plaid API version                       | Plaid client library                           | Supports Plaid Link                        | Link OAuth flows                                                 | Install (1-liner?)                    | Output format(s)                                        | Target software              | TX             | INV         |
 | ------------------------------------------------------------------------------------------- | ------------- | ----------: | ----: | ----: | ----------: | -------: | ------------------------------ | --------------------------------------- | ---------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------- | ---------------------------- | -------------- | ----------- |
@@ -132,3 +128,10 @@ This project was motivated by the features and shortcomings of these other packa
 | [yyx990803/build-your-own-mint](https://github.com/yyx990803/build-your-own-mint)           | JavaScript    |  2019-01-23 |  2500 |   205 |           0 |        9 | Abandoned (tutorial)           | 2018-05-22 (explicit)                   | Node plaid ^2.10.0                             | Yes                                        | No (legacy; pre-OAuth-era wiring)                                | npm install (repo)                    | Google Sheets                                           | Spreadsheet workflow         | Yes            | No          |
 | [cyrusstoller/plaid-cli](https://github.com/cyrusstoller/plaid-cli)                         | JavaScript    |  2018-10-18 |     2 |     0 |           0 |        0 | Abandoned                      | Not stated                              | Node plaid ^2.8.2                              | No (no Link flow described)                | No                                                               | npm -g                                | Interactive REPL / stdout (no export format documented) | Generic                      | Yes (API tool) | No evidence |
 
+## Development environment
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow.
+
+## Caveats
+
+This tool is meant to simplify the maintenance of a personal plaintext finance records, please consider where and how your data is stored (please don't run this on a public machine). Note that data and secrets are stored in as plain text and makes no effort to encrypt or otherwise obfuscate your data.
