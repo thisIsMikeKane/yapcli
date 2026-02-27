@@ -51,7 +51,7 @@ yapcli config set PLAID_ENV sandbox
 
 `yapcli` loads this default `.env` file on package import.
 
-### Default paths
+#### Default paths
 
 `yapcli` resolves default directories using [platform directories](https://platformdirs.readthedocs.io/en/latest/explanation.html#config-directories) (unless you override them with command options or environment variables):
 
@@ -63,7 +63,7 @@ yapcli config set PLAID_ENV sandbox
   - `./output` (production)
   - `./sandbox/output` (sandbox)
 
-### Overrides
+#### Overrides
 
 - Pass `--out-dir` on export commands to explicitly choose output location
 - Set `PLAID_SECRETS_DIR` to override secrets location globally
