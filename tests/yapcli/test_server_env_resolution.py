@@ -125,3 +125,36 @@ def test_load_env_files_does_not_override_shell_environment_value(
     load_env_files()
 
     assert os.getenv("PLAID_CLIENT_ID") == "already-set"
+
+
+def test_load_env_files_skips_unrecognized_env_var_and_warns(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    platform_env = tmp_path / "platform.env"
+    cwd_env = tmp_path / "cwd.env"
+
+    platform_env.write_text("UNRECOGNIZED_VAR=from-platform\n")
+    cwd_env.write_text("PLAID_CLIENT_ID=from-cwd\n")
+
+    monkeypatch.setattr("yapcli.env.platform_env_file_path", lambda: platform_env)
+    monkeypatch.setattr("yapcli.env.cwd_env_file_path", lambda: cwd_env)
+
+    monkeypatch.delenv("UNRECOGNIZED_VAR", raising=False)
+    monkeypatch.delenv("PLAID_CLIENT_ID", raising=False)
+
+    warnings: list[str] = []
+
+    def fake_warning(message: str, *args) -> None:
+        if args:
+            warnings.append(message.format(*args))
+        else:
+            warnings.append(message)
+
+    monkeypatch.setattr("yapcli.env.logger.warning", fake_warning)
+
+    load_env_files()
+
+    assert os.getenv("UNRECOGNIZED_VAR") is None
+    assert os.getenv("PLAID_CLIENT_ID") == "from-cwd"
+    assert any("Skipping unrecognized env var" in w for w in warnings)

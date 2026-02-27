@@ -139,9 +139,10 @@ def get_transactions_for_institution(
 
     item_id, access_token = load_credentials(institution_id=institution_id)
     backend = PlaidBackend(access_token=access_token, item_id=item_id)
+    request_kwargs: Dict[str, Any] = {"account_id": account_id}
     if isinstance(cursor, str) and cursor.strip() != "":
-        return backend.get_transactions(account_id=account_id, cursor=cursor.strip())
-    return backend.get_transactions(account_id=account_id)
+        request_kwargs["cursor"] = cursor.strip()
+    return backend.get_transactions(**request_kwargs)
 
 
 def _payload_to_dataframe(

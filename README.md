@@ -17,7 +17,7 @@ A CLI for exporting Plaid API requests to plain text for importing into accounti
 
 ### Plaid developer credentials
 
-[ ] TODO explain how to get Plaid developer credentials
+- [ ] TODO explain how to get Plaid developer credentials
 
 ### Dependencies
 
@@ -41,15 +41,9 @@ Use the `config` commands to create and manage your `yapcli` `.env` file:
 # Show loaded .env paths and default directories
 yapcli config paths
 
-# Interactive setup (prompts for core values)
+# Interactive setup (prompts for required values)
 yapcli config init
-
-# Set/update a single key
-yapcli config set PLAID_CLIENT_ID your_client_id
-yapcli config set PLAID_ENV sandbox
 ```
-
-`yapcli` loads this default `.env` file on package import.
 
 #### Default paths
 
@@ -63,14 +57,9 @@ yapcli config set PLAID_ENV sandbox
   - `./output` (production)
   - `./sandbox/output` (sandbox)
 
-#### Overrides
+#### Configuration precedence
 
-- Pass `--out-dir` on export commands to explicitly choose output location
-- Set `PLAID_SECRETS_DIR` to override secrets location globally
-- Set `YAPCLI_LOG_DIR` to override log directory globally
-- Set `YAPCLI_OUTPUT_DIR` to override the default output directory globally
-
-#### Configuration precedence (highest to lowest)
+`yapcli` loads this default `.env` file on package import. The following describes how different `.env` files, environment variables, and command options take precedence (highest to lowest).
 
 1. Command-line arguments/options
 2. Environment variables already set in your shell/session
@@ -82,6 +71,13 @@ Examples:
 - `yapcli --production ...` overrides `PLAID_ENV` from both shell env and `.env`
 - Exporting `PLAID_ENV=sandbox` in your shell overrides `PLAID_ENV` in `.env`
 - `.env` values are used as defaults when neither CLI options nor shell env provide a value
+
+#### Overrides
+
+- Pass `--out-dir` on export commands to explicitly choose output location
+- Set `PLAID_SECRETS_DIR` to override secrets location globally
+- Set `YAPCLI_LOG_DIR` to override log directory globally
+- Set `YAPCLI_OUTPUT_DIR` to override the default output directory globally
 
 ### Link a Plaid account
 
@@ -131,7 +127,6 @@ The features and limitations of these related projects inspired yapcli. Informat
 | [tobidae/bank-me](https://github.com/tobidae/bank-me)                                       | TypeScript/JS |  2019-07-03 |    10 |     3 |           0 |        0 | Abandoned                      | Not stated                              | Node plaid ^4.1.0                              | Yes (links accounts)                       | Unknown (not confirmed)                                          | clone + multi npm installs            | CSV, Google Sheets (Firebase optional)                  | Spreadsheet workflow         | Yes            | No          |
 | [yyx990803/build-your-own-mint](https://github.com/yyx990803/build-your-own-mint)           | JavaScript    |  2019-01-23 |  2500 |   205 |           0 |        9 | Abandoned (tutorial)           | 2018-05-22 (explicit)                   | Node plaid ^2.10.0                             | Yes                                        | No (legacy; pre-OAuth-era wiring)                                | npm install (repo)                    | Google Sheets                                           | Spreadsheet workflow         | Yes            | No          |
 | [cyrusstoller/plaid-cli](https://github.com/cyrusstoller/plaid-cli)                         | JavaScript    |  2018-10-18 |     2 |     0 |           0 |        0 | Abandoned                      | Not stated                              | Node plaid ^2.8.2                              | No (no Link flow described)                | No                                                               | npm -g                                | Interactive REPL / stdout (no export format documented) | Generic                      | Yes (API tool) | No evidence |
-
 
 ## Development environment
 

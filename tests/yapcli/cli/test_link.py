@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 
 import pytest
+import questionary
 from typer.testing import CliRunner
 
 from yapcli.cli import link
@@ -135,10 +136,12 @@ def test_start_backend_passes_products_arg(
         secrets_dir=secrets_dir,
         log_path=log_path,
         products="transactions,investments",
+        days_requested=180,
     )
 
     try:
         assert "PLAID_PRODUCTS" not in captured_env
+        assert captured_env.get("YAPCLI_DAYS_REQUESTED") == "180"
         assert captured_cmd == [
             link.sys.executable,
             "-m",
@@ -156,13 +159,21 @@ def test_start_backend_passes_products_arg(
 def test_link_defaults_to_sandbox_secrets_dir(monkeypatch: pytest.MonkeyPatch) -> None:
     runner = CliRunner()
     seen: dict[str, Path] = {}
+    seen_days: dict[str, int] = {}
 
     def fake_start_backend(
-        port: int, secrets_dir: Path, log_path: Path, *, products=None
+        port: int,
+        secrets_dir: Path,
+        log_path: Path,
+        *,
+        products=None,
+        days_requested: int = 365,
     ):
         seen["secrets_dir"] = secrets_dir
+        seen_days["value"] = days_requested
         return None
 
+    monkeypatch.setattr(link, "_get_frontend_dir", lambda: Path("."))
     monkeypatch.setattr(link, "start_backend", fake_start_backend)
     monkeypatch.setattr(link, "start_frontend", lambda *args, **kwargs: None)
     monkeypatch.setattr(
@@ -189,6 +200,49 @@ def test_link_defaults_to_sandbox_secrets_dir(monkeypatch: pytest.MonkeyPatch) -
         f"Exception: {result.exception!r}"
     )
     assert seen["secrets_dir"] == link.default_secrets_dir()
+    assert seen_days["value"] == 365
+
+
+def test_link_passes_custom_days_requested(monkeypatch: pytest.MonkeyPatch) -> None:
+    runner = CliRunner()
+    seen_days: dict[str, int] = {}
+
+    def fake_start_backend(
+        port: int,
+        secrets_dir: Path,
+        log_path: Path,
+        *,
+        products=None,
+        days_requested: int = 365,
+    ):
+        seen_days["value"] = days_requested
+        return None
+
+    monkeypatch.setattr(link, "_get_frontend_dir", lambda: Path("."))
+    monkeypatch.setattr(link, "start_backend", fake_start_backend)
+    monkeypatch.setattr(link, "start_frontend", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        link,
+        "wait_for_credentials",
+        lambda **kwargs: ("ins_1", "item-1", "access-1"),
+    )
+    monkeypatch.setattr(link, "terminate_process", lambda *args, **kwargs: None)
+
+    result = runner.invoke(
+        root_cli.app,
+        [
+            "--sandbox",
+            "link",
+            "--days",
+            "120",
+            "--no-open-browser",
+            "--timeout",
+            "1",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert seen_days["value"] == 120
 
 
 def test_link_rejects_invalid_products(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -217,3 +271,116 @@ def test_link_rejects_invalid_products(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert result.exit_code != 0
     assert "Invalid --products" in result.output
+
+
+def test_link_clear_all_clears_only_current_environment(tmp_path: Path) -> None:
+    runner = CliRunner()
+    env = {"YAPCLI_DEFAULT_DIRS": "CWD", "PLAID_ENV": "production"}
+
+    with runner.isolated_filesystem(temp_dir=str(tmp_path)):
+        cwd = Path.cwd()
+        (cwd / "secrets").mkdir(parents=True, exist_ok=True)
+        (cwd / "sandbox" / "secrets").mkdir(parents=True, exist_ok=True)
+        (cwd / "secrets" / "ins_prod_access_token").write_text("prod-token")
+        (cwd / "sandbox" / "secrets" / "ins_sandbox_access_token").write_text(
+            "sandbox-token"
+        )
+
+        result = runner.invoke(root_cli.app, ["link", "--clear-all"], env=env)
+
+        assert result.exit_code == 0
+        assert not (cwd / "secrets" / "ins_prod_access_token").exists()
+        assert (cwd / "sandbox" / "secrets" / "ins_sandbox_access_token").exists()
+
+
+def test_link_clear_single_institution_by_argument(tmp_path: Path) -> None:
+    runner = CliRunner()
+    env = {"YAPCLI_DEFAULT_DIRS": "CWD", "PLAID_ENV": "production"}
+
+    with runner.isolated_filesystem(temp_dir=str(tmp_path)):
+        cwd = Path.cwd()
+        secrets = cwd / "secrets"
+        secrets.mkdir(parents=True, exist_ok=True)
+        (secrets / "ins_0000_access_token").write_text("token")
+        (secrets / "ins_0000_item_id").write_text("item")
+        (secrets / "ins_1111_access_token").write_text("other")
+
+        result = runner.invoke(
+            root_cli.app,
+            ["link", "--clear_ins", "ins_0000"],
+            env=env,
+        )
+
+        assert result.exit_code == 0
+        assert not (secrets / "ins_0000_access_token").exists()
+        assert not (secrets / "ins_0000_item_id").exists()
+        assert (secrets / "ins_1111_access_token").exists()
+
+
+def test_link_clear_interactive_uses_questionary_and_item_id(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = CliRunner()
+    env = {"YAPCLI_DEFAULT_DIRS": "CWD", "PLAID_ENV": "production"}
+
+    class _AskResult:
+        def ask(self):
+            return ["ins_0000"]
+
+    captured_titles: list[str] = []
+
+    def fake_checkbox(message, choices):
+        assert message == "Select institution secret(s) to clear"
+        captured_titles.extend([choice.title for choice in choices])
+        return _AskResult()
+
+    class _FakeBackend:
+        def __init__(self, access_token: str, item_id: str):
+            self.access_token = access_token
+            self.item_id = item_id
+
+        def get_item(self):
+            return {"institution": {"name": "Test Bank"}}
+
+    monkeypatch.setattr(questionary, "checkbox", fake_checkbox)
+    monkeypatch.setattr("yapcli.institutions.PlaidBackend", _FakeBackend)
+
+    with runner.isolated_filesystem(temp_dir=str(tmp_path)):
+        cwd = Path.cwd()
+        secrets = cwd / "secrets"
+        secrets.mkdir(parents=True, exist_ok=True)
+        (secrets / "ins_0000_access_token").write_text("token")
+        (secrets / "ins_0000_item_id").write_text("item_0000")
+
+        result = runner.invoke(root_cli.app, ["link", "--clear"], env=env)
+
+        assert result.exit_code == 0
+        assert "item_id=ins_0000 - Test Bank" in captured_titles
+        assert not (secrets / "ins_0000_access_token").exists()
+        assert not (secrets / "ins_0000_item_id").exists()
+
+
+def test_link_clear_rejects_multiple_clear_modes() -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(
+        root_cli.app,
+        ["link", "--clear", "--clear_ins", "ins_0000"],
+    )
+
+    assert result.exit_code != 0
+    assert "Use only one of --clear, --clear_ins, or --clear-all" in result.output
+
+
+def test_link_clear_rejects_link_options(monkeypatch: pytest.MonkeyPatch) -> None:
+    runner = CliRunner()
+
+    monkeypatch.setattr(link, "start_backend", lambda *args, **kwargs: None)
+
+    result = runner.invoke(
+        root_cli.app,
+        ["link", "--clear-all", "--timeout", "1"],
+    )
+
+    assert result.exit_code != 0
+    assert "cannot be used with link" in result.output

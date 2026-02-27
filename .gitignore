@@ -4,6 +4,8 @@ logs/
 data/
 sandbox/
 output/
+plaid_output/
+yapcli_output/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
