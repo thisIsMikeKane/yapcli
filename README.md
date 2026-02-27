@@ -33,8 +33,6 @@ pipx install yapcli
 yapcli --help
 ```
 
-## Usage
-
 ### Configure Plaid credentials
 
 Use the `config` commands to create and manage your `yapcli` `.env` file:
@@ -53,7 +51,26 @@ yapcli config set PLAID_ENV sandbox
 
 `yapcli` loads this default `.env` file on package import.
 
-### Configuration precedence (highest to lowest)
+### Default paths
+
+`yapcli` resolves default directories using [platform directories](https://platformdirs.readthedocs.io/en/latest/explanation.html#config-directories) (unless you override them with command options or environment variables):
+
+- `YAPCLI_DEFAULT_DIRS` controls the default location for **config**, **secrets**, and **logs**:
+  - `CWD`: use the current working directory (e.g. `./secrets`, `./logs`, `./.env`)
+  - `PLATFORMDIRS`: use platform-native locations via `platformdirs` (e.g. `~/.config/yapcli` on Linux)
+- `PLAID_ENV=sandbox` adds a `sandbox/` subdirectory for secrets/logs/exports.
+- Export **output** defaults to the current working directory:
+  - `./output` (production)
+  - `./sandbox/output` (sandbox)
+
+### Overrides
+
+- Pass `--out-dir` on export commands to explicitly choose output location
+- Set `PLAID_SECRETS_DIR` to override secrets location globally
+- Set `YAPCLI_LOG_DIR` to override log directory globally
+- Set `YAPCLI_OUTPUT_DIR` to override the default output directory globally
+
+#### Configuration precedence (highest to lowest)
 
 1. Command-line arguments/options
 2. Environment variables already set in your shell/session
@@ -92,25 +109,6 @@ yapcli transactions --help
 ```bash
 yapcli balances --help
 ```
-
-## Default paths
-
-`yapcli` resolves default directories using [platform directories](https://platformdirs.readthedocs.io/en/latest/explanation.html#config-directories) (unless you override them with command options or environment variables):
-
-- `YAPCLI_DEFAULT_DIRS` controls the default location for **config**, **secrets**, and **logs**:
-  - `CWD`: use the current working directory (e.g. `./secrets`, `./logs`, `./.env`)
-  - `PLATFORMDIRS`: use platform-native locations via `platformdirs` (e.g. `~/.config/yapcli` on Linux)
-- `PLAID_ENV=sandbox` adds a `sandbox/` subdirectory for secrets/logs/exports.
-- Export **output** defaults to the current working directory:
-  - `./output` (production)
-  - `./sandbox/output` (sandbox)
-
-### Overrides
-
-- Pass `--out-dir` on export commands to explicitly choose output location
-- Set `PLAID_SECRETS_DIR` to override secrets location globally
-- Set `YAPCLI_LOG_DIR` to override log directory globally
-- Set `YAPCLI_OUTPUT_DIR` to override the default output directory globally
 
 ## Related works
 
