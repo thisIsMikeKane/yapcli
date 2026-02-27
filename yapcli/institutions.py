@@ -62,7 +62,10 @@ def discover_institutions(*, secrets_dir: Path) -> List[DiscoveredInstitution]:
                 bank_name = None
 
         results.append(
-            DiscoveredInstitution(institution_id=identifier, bank_name=bank_name)
+            DiscoveredInstitution(
+                institution_id=identifier,
+                bank_name=bank_name,
+            )
         )
 
     if not results:
@@ -86,11 +89,10 @@ def prompt_for_institutions(
 
     choices: List[questionary.Choice] = []
     for idx, entry in enumerate(available):
-        title = (
-            f"{entry.institution_id} ({entry.bank_name})"
-            if entry.bank_name
-            else entry.institution_id
-        )
+        title_parts = [f"item_id={entry.institution_id}"]
+        if entry.bank_name:
+            title_parts.append(entry.bank_name)
+        title = " - ".join(title_parts)
         choices.append(
             questionary.Choice(
                 title=title,
