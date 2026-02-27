@@ -15,6 +15,7 @@ import typer
 from loguru import logger
 from rich.console import Console
 
+from yapcli.institutions import discover_institutions, prompt_for_institutions
 from yapcli.logging import build_log_path
 from yapcli.utils import default_log_dir, default_secrets_dir
 
@@ -278,6 +279,24 @@ def wait_for_credentials(
     raise TimeoutError
 
 
+def _clear_institution_secrets(*, secrets_dir: Path, institution_id: str) -> int:
+    removed = 0
+    for path in secrets_dir.glob(f"{institution_id}_*"):
+        if path.is_file():
+            path.unlink(missing_ok=True)
+            removed += 1
+    return removed
+
+
+def _clear_all_secrets(*, secrets_dir: Path) -> int:
+    removed = 0
+    for path in secrets_dir.glob("*"):
+        if path.is_file():
+            path.unlink(missing_ok=True)
+            removed += 1
+    return removed
+
+
 @app.command()
 def link(
     backend_port: int = typer.Option(
@@ -323,15 +342,99 @@ def link(
         ),
         show_default=True,
     ),
+    clear: bool = typer.Option(
+        False,
+        "--clear",
+        help="Clear saved secrets via interactive institution selection UI.",
+    ),
+    clear_ins: Optional[str] = typer.Option(
+        None,
+        "--clear_ins",
+        help="Clear saved secrets for one institution id (for example: --clear_ins ins_0000).",
+    ),
+    clear_all: bool = typer.Option(
+        False,
+        "--clear-all",
+        help="Clear all saved secrets.",
+    ),
 ) -> None:
     """
     Launch Plaid Link locally and wait for user to complete the flow returning an item_id and access_token.
     """
+    secrets_path = default_secrets_dir()
+
+    clear_mode_count = int(clear) + int(bool(clear_ins)) + int(clear_all)
+    if clear_mode_count > 1:
+        raise typer.BadParameter("Use only one of --clear, --clear_ins, or --clear-all")
+
+    if clear_mode_count == 1 and any(
+        [
+            backend_port != DEFAULT_BACKEND_PORT,
+            frontend_port != DEFAULT_FRONTEND_PORT,
+            timeout != 300,
+            not open_browser,
+            products is not None,
+            days_requested != 365,
+        ]
+    ):
+        raise typer.BadParameter(
+            "--clear/--clear_ins/--clear-all cannot be used with link options such as --backend-port, "
+            "--frontend-port, --timeout, --open-browser/--no-open-browser, --products, or --days"
+        )
+
+    if clear_mode_count == 1:
+        secrets_path.mkdir(parents=True, exist_ok=True)
+
+        if clear_all:
+            removed = _clear_all_secrets(secrets_dir=secrets_path)
+            console.print(
+                f"[green]Cleared[/] {removed} secret file(s) from {secrets_path}."
+            )
+            logger.info(
+                "Cleared all secrets (count={}, secrets_dir={})",
+                removed,
+                secrets_path,
+            )
+            return
+
+        selected_ids: list[str]
+        if clear_ins:
+            selected_ids = [clear_ins]
+        elif clear:
+            try:
+                discovered = discover_institutions(secrets_dir=secrets_path)
+                selected_ids = prompt_for_institutions(
+                    discovered,
+                    message="Select institution secret(s) to clear",
+                )
+            except ValueError as exc:
+                raise typer.BadParameter(str(exc)) from exc
+        else:
+            raise typer.BadParameter("Use one of --clear, --clear_ins, or --clear-all")
+
+        total_removed = 0
+        for selected_id in selected_ids:
+            removed = _clear_institution_secrets(
+                secrets_dir=secrets_path,
+                institution_id=selected_id,
+            )
+            total_removed += removed
+            console.print(
+                f"[green]Cleared[/] {removed} secret file(s) for {selected_id}."
+            )
+
+        logger.info(
+            "Cleared institution secrets (institutions={}, files_removed={}, secrets_dir={})",
+            selected_ids,
+            total_removed,
+            secrets_path,
+        )
+        return
+
     started_at = time.time()
     started_dt = dt.datetime.fromtimestamp(started_at)
     # Logging is configured once in the main Typer app callback.
 
-    secrets_path = default_secrets_dir()
     log_dir = default_log_dir()
     backend_log_path = build_log_path(
         log_dir=log_dir,
