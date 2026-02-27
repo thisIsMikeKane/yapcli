@@ -112,14 +112,6 @@ yapcli balances --help
 - Set `YAPCLI_LOG_DIR` to override log directory globally
 - Set `YAPCLI_OUTPUT_DIR` to override the default output directory globally
 
-## Development environment
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow.
-
-## Project scripts
-
-The CLI entry point is defined in `pyproject.toml` under `[project.scripts]` as `yapcli = "yapcli.cli.main:main"`. When installed via pipx or pip, the `yapcli` command becomes available in your PATH.
-
 ## Related works
 
 The features and limitations of these related projects inspired yapcli. Information below as of 2/26/2026.
@@ -141,3 +133,12 @@ The features and limitations of these related projects inspired yapcli. Informat
 | [tobidae/bank-me](https://github.com/tobidae/bank-me)                                       | TypeScript/JS |  2019-07-03 |    10 |     3 |           0 |        0 | Abandoned                      | Not stated                              | Node plaid ^4.1.0                              | Yes (links accounts)                       | Unknown (not confirmed)                                          | clone + multi npm installs            | CSV, Google Sheets (Firebase optional)                  | Spreadsheet workflow         | Yes            | No          |
 | [yyx990803/build-your-own-mint](https://github.com/yyx990803/build-your-own-mint)           | JavaScript    |  2019-01-23 |  2500 |   205 |           0 |        9 | Abandoned (tutorial)           | 2018-05-22 (explicit)                   | Node plaid ^2.10.0                             | Yes                                        | No (legacy; pre-OAuth-era wiring)                                | npm install (repo)                    | Google Sheets                                           | Spreadsheet workflow         | Yes            | No          |
 | [cyrusstoller/plaid-cli](https://github.com/cyrusstoller/plaid-cli)                         | JavaScript    |  2018-10-18 |     2 |     0 |           0 |        0 | Abandoned                      | Not stated                              | Node plaid ^2.8.2                              | No (no Link flow described)                | No                                                               | npm -g                                | Interactive REPL / stdout (no export format documented) | Generic                      | Yes (API tool) | No evidence |
+
+
+## Development environment
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow.
+
+## Caveats
+
+This tool is meant to simplify the maintenance of a personal plaintext finance records, please consider where and how your data is stored (please don't run this on a public machine). Note that data and secrets are stored in as plain text and makes no effort to encrypt or otherwise obfuscate your data.
