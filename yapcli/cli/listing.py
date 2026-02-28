@@ -22,9 +22,13 @@ def _fetch_accounts(*, institution: DiscoveredInstitution) -> List[Dict[str, Any
     )
     backend = PlaidBackend(access_token=access_token, item_id=item_id)
     payload = backend.get_accounts()
-    accounts = payload.get("accounts") if isinstance(payload, dict) else None
+    if not isinstance(payload, dict):
+        raise ValueError("Invalid accounts payload from backend")
+    if "error" in payload:
+        raise ValueError("Error returned when fetching accounts from backend")
+    accounts = payload.get("accounts")
     if not isinstance(accounts, list):
-        return []
+        raise ValueError("Invalid accounts list in backend response")
     return [account for account in accounts if isinstance(account, dict)]
 
 
