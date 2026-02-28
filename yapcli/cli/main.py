@@ -15,6 +15,7 @@ from yapcli.cli.config import app as config_app
 from yapcli.cli.holdings import app as holdings_app
 from yapcli.cli.investment_transactions import app as investment_transactions_app
 from yapcli.cli.link import app as link_app
+from yapcli.cli.listing import app as listing_app
 from yapcli.cli.transactions import app as transactions_app
 from yapcli.logging import configure_logging, log_startup_paths
 from yapcli.utils import default_log_dir
@@ -26,6 +27,7 @@ app = typer.Typer(
     help="Utilities for interacting with Plaid programmatically.",
 )
 app.add_typer(link_app)
+app.add_typer(listing_app)
 app.add_typer(config_app, name="config")
 app.add_typer(balances_app)
 app.add_typer(holdings_app)
