@@ -50,7 +50,9 @@ def list_linked() -> None:
         try:
             accounts = _fetch_accounts(institution=institution)
         except Exception as exc:
-            logger.exception("Failed to load accounts for {}", institution.institution_id)
+            logger.exception(
+                "Failed to load accounts for {}", institution.institution_id
+            )
             console.print("  [yellow](unable to load accounts)[/]")
             continue
 
