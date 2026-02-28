@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 import typer
+from loguru import logger
 from rich.console import Console
 
 from yapcli.institutions import DiscoveredInstitution, discover_institutions
@@ -48,7 +49,8 @@ def list_linked() -> None:
 
         try:
             accounts = _fetch_accounts(institution=institution)
-        except Exception:
+        except Exception as exc:
+            logger.exception("Failed to load accounts for {}", institution.institution_id)
             console.print("  [yellow](unable to load accounts)[/]")
             continue
 
