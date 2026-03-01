@@ -182,7 +182,6 @@ def test_link_defaults_to_sandbox_secrets_dir(monkeypatch: pytest.MonkeyPatch) -
         lambda **kwargs: ("ins_1", "item-1", "access-1"),
     )
     monkeypatch.setattr(link, "terminate_process", lambda *args, **kwargs: None)
-    monkeypatch.setattr(link, "_get_frontend_dir", lambda: Path("."))
     result = runner.invoke(
         root_cli.app,
         [
