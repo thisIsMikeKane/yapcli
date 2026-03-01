@@ -38,6 +38,10 @@ from plaid.api import plaid_api
 from yapcli.utils import default_secrets_dir
 
 DEFAULT_PLAID_REDIRECT_URI = ""
+
+MIN_LINK_DAYS_REQUESTED = 1
+MAX_LINK_DAYS_REQUESTED = 730
+
 DEFAULT_LINK_DAYS_REQUESTED = 365
 
 
@@ -95,10 +99,12 @@ def _resolve_link_days_requested(env: Dict[str, str]) -> int:
         )
         return DEFAULT_LINK_DAYS_REQUESTED
 
-    if days < 1:
+    if days < MIN_LINK_DAYS_REQUESTED or days > MAX_LINK_DAYS_REQUESTED:
         logger.warning(
-            "Invalid YAPCLI_DAYS_REQUESTED={!r}; must be >= 1, using default {}",
+            "Invalid YAPCLI_DAYS_REQUESTED={!r}; must be >= {} and <= {}, using default {}",
             raw,
+            MIN_LINK_DAYS_REQUESTED,
+            MAX_LINK_DAYS_REQUESTED,
             DEFAULT_LINK_DAYS_REQUESTED,
         )
         return DEFAULT_LINK_DAYS_REQUESTED

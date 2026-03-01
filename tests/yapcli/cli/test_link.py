@@ -182,7 +182,6 @@ def test_link_defaults_to_sandbox_secrets_dir(monkeypatch: pytest.MonkeyPatch) -
         lambda **kwargs: ("ins_1", "item-1", "access-1"),
     )
     monkeypatch.setattr(link, "terminate_process", lambda *args, **kwargs: None)
-
     result = runner.invoke(
         root_cli.app,
         [
@@ -227,7 +226,6 @@ def test_link_passes_custom_days_requested(monkeypatch: pytest.MonkeyPatch) -> N
         lambda **kwargs: ("ins_1", "item-1", "access-1"),
     )
     monkeypatch.setattr(link, "terminate_process", lambda *args, **kwargs: None)
-
     result = runner.invoke(
         root_cli.app,
         [
@@ -273,6 +271,35 @@ def test_link_rejects_invalid_products(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "Invalid --products" in result.output
 
 
+def test_link_rejects_invalid_days(monkeypatch: pytest.MonkeyPatch) -> None:
+    runner = CliRunner()
+
+    # failures should happen before backend/frontend are started
+    monkeypatch.setattr(link, "start_backend", lambda *args, **kwargs: None)
+    monkeypatch.setattr(link, "start_frontend", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        link,
+        "wait_for_credentials",
+        lambda **kwargs: ("ins", "item", "access"),
+    )
+    monkeypatch.setattr(link, "terminate_process", lambda *args, **kwargs: None)
+    monkeypatch.setattr(link, "_get_frontend_dir", lambda: Path("."))
+
+    for bad in ["0", "731"]:
+        result = runner.invoke(
+            root_cli.app,
+            [
+                "--sandbox",
+                "link",
+                "--no-open-browser",
+                "--timeout",
+                "1",
+                "--days",
+                bad,
+            ],
+        )
+        assert result.exit_code != 0, f"expected failure for days={bad}"
+        assert "Invalid value for '--days'" in result.output
 def test_link_clear_all_clears_only_current_environment(tmp_path: Path) -> None:
     runner = CliRunner()
     env = {"YAPCLI_DEFAULT_DIRS": "CWD", "PLAID_ENV": "production"}
