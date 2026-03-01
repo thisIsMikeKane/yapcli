@@ -70,7 +70,6 @@ def test_create_link_token_ignores_env_days_requested_out_of_range(caplog) -> No
     # values outside the Plaid-specified bounds should be replaced by the default
     from yapcli.server import (
         DEFAULT_LINK_DAYS_REQUESTED,
-        MIN_LINK_DAYS_REQUESTED,
         MAX_LINK_DAYS_REQUESTED,
     )
 
